@@ -1,0 +1,23 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.container {
+  width: min(var(--container-width), calc(100% - 2rem));
+  margin-inline: auto;
+}
+
+.content {
+  width: min(var(--content-width), 100%);
+  margin-inline: auto;
+}
+
+section {
+  padding-block: var(--space-7);
+}

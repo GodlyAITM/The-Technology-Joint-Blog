@@ -1,0 +1,49 @@
+---
+import Button from "./Button.astro";
+---
+
+<section>
+    <div class="container hero">
+        <div>
+            <p class="eyebrow">TECHNOLOGY PUBLICATION</p>
+
+            <h1>Technology Insights That Help You Work Smarter.</h1>
+
+            <p>
+                Independent technology journalism, practical software guides,
+                cybersecurity education and trusted reviews designed to help you
+                make better technology decisions.
+            </p>
+
+            <div class="buttons">
+                <Button href="/articles"> Explore Articles </Button>
+
+                <Button href="/contact" variant="secondary">
+                    Work With Us
+                </Button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .hero {
+        padding: 7rem 0;
+    }
+
+    .eyebrow {
+        color: var(--color-primary);
+
+        font-weight: 700;
+
+        letter-spacing: 0.08em;
+    }
+
+    .buttons {
+        display: flex;
+
+        gap: 1rem;
+
+        margin-top: 2rem;
+    }
+</style>
