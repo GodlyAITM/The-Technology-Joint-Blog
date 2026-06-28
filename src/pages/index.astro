@@ -1,7 +1,12 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+
 import Header from "../components/layouts/Header.astro";
 import Hero from "../components/layouts/Hero.astro";
+import FeaturedArticles from "../components/layouts/FeaturedArticles.astro";
+import LatestArticles from "../components/layouts/LatestArticles.astro";
+import Categories from "../components/layouts/Categories.astro";
+import Founder from "../components/layouts/Founder.astro";
 import Footer from "../components/layouts/Footer.astro";
 ---
 
@@ -10,6 +15,18 @@ import Footer from "../components/layouts/Footer.astro";
     description="Technology insights, reviews and cybersecurity guides."
 >
     <Header />
-    <Hero />
+
+    <main>
+        <Hero />
+
+        <FeaturedArticles />
+
+        <LatestArticles />
+
+        <Categories />
+
+        <Founder />
+    </main>
+
     <Footer />
 </BaseLayout>

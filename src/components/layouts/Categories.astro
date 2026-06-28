@@ -1,0 +1,55 @@
+---
+import SectionHeading from "./SectionHeading.astro";
+---
+
+<section>
+    <div class="container">
+        <SectionHeading
+            eyebrow="Topics"
+            title="Explore Technology"
+            description="Browse our growing library of technology content."
+        />
+
+        <div class="categories">
+            <a href="#">Cybersecurity</a>
+
+            <a href="#">Artificial Intelligence</a>
+
+            <a href="#">Software</a>
+
+            <a href="#">Smartphones</a>
+
+            <a href="#">Windows</a>
+
+            <a href="#">Industry News</a>
+        </div>
+    </div>
+</section>
+
+<style>
+    section {
+        padding: 5rem 0;
+    }
+
+    .categories {
+        display: flex;
+
+        flex-wrap: wrap;
+
+        gap: 1rem;
+    }
+
+    .categories a {
+        padding: 1rem 1.5rem;
+
+        border-radius: 999px;
+
+        background: #eef2ff;
+
+        text-decoration: none;
+
+        font-weight: 700;
+
+        color: var(--color-primary);
+    }
+</style>

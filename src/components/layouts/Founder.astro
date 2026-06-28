@@ -1,0 +1,62 @@
+---
+import SectionHeading from "./SectionHeading.astro";
+import { site } from "../../data/site";
+---
+
+<section class="founder">
+    <div class="container">
+        <SectionHeading
+            eyebrow="Founder"
+            title="Meet the Person Behind The Technology Joint"
+            description="Technology journalism backed by practical SEO and real-world experience."
+        />
+
+        <div class="content">
+            <div>
+                <h3>{site.founder}</h3>
+
+                <p>
+                    The Technology Joint was founded to make technology easier
+                    to understand. Instead of chasing headlines, we focus on
+                    practical guides, trustworthy reviews, cybersecurity
+                    awareness and search-first content that genuinely helps
+                    readers.
+                </p>
+
+                <p>
+                    Alongside publishing technology content, I help businesses
+                    improve their visibility through technical SEO, content
+                    strategy and long-form articles that rank.
+                </p>
+
+                <a class="button" href="/about"> Learn More </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .founder {
+        padding: 5rem 0;
+    }
+
+    .content {
+        max-width: 800px;
+    }
+
+    .button {
+        display: inline-block;
+
+        margin-top: 2rem;
+
+        padding: 0.9rem 1.5rem;
+
+        background: var(--color-primary);
+
+        color: white;
+
+        border-radius: 999px;
+
+        text-decoration: none;
+    }
+</style>

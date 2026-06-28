@@ -1,0 +1,53 @@
+---
+import SectionHeading from "./SectionHeading.astro";
+import ArticleCard from "./ArticleCard.astro";
+---
+
+<section class="latest">
+    <div class="container">
+        <SectionHeading
+            eyebrow="Latest"
+            title="Fresh From The Technology Joint"
+            description="The newest articles, guides and practical technology insights."
+        />
+
+        <div class="grid">
+            <ArticleCard
+                title="Windows 11 Tips Every User Should Know"
+                excerpt="Simple tweaks that improve productivity and security."
+                category="Windows"
+                href="#"
+            />
+
+            <ArticleCard
+                title="How to Protect Your Smartphone"
+                excerpt="Security habits that prevent common attacks."
+                category="Cybersecurity"
+                href="#"
+            />
+
+            <ArticleCard
+                title="Best AI Productivity Tools"
+                excerpt="A practical comparison of tools that actually save time."
+                category="Artificial Intelligence"
+                href="#"
+            />
+        </div>
+    </div>
+</section>
+
+<style>
+    .latest {
+        padding: 5rem 0;
+
+        background: #f8fafc;
+    }
+
+    .grid {
+        display: grid;
+
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+
+        gap: 2rem;
+    }
+</style>

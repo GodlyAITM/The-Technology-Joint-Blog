@@ -1,0 +1,51 @@
+---
+import SectionHeading from "./SectionHeading.astro";
+import ArticleCard from "./ArticleCard.astro";
+---
+
+<section class="featured">
+    <div class="container">
+        <SectionHeading
+            eyebrow="Featured"
+            title="Editor's Picks"
+            description="Start with our most valuable technology guides and expert insights."
+        />
+
+        <div class="grid">
+            <ArticleCard
+                title="How to Stay Safe Online in 2026"
+                excerpt="Practical cybersecurity habits everyone should know."
+                category="Cybersecurity"
+                href="#"
+            />
+
+            <ArticleCard
+                title="The Best Productivity Software This Year"
+                excerpt="Our favourite tools for getting more done."
+                category="Software"
+                href="#"
+            />
+
+            <ArticleCard
+                title="AI Tools Worth Using"
+                excerpt="A realistic guide to AI tools that genuinely improve your workflow."
+                category="Artificial Intelligence"
+                href="#"
+            />
+        </div>
+    </div>
+</section>
+
+<style>
+    .grid {
+        display: grid;
+
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+
+        gap: 2rem;
+    }
+
+    .featured {
+        padding: 5rem 0;
+    }
+</style>
