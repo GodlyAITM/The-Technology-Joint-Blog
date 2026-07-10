@@ -1,0 +1,194 @@
+---
+import { getCollection, type CollectionEntry } from "astro:content";
+
+interface Props {
+    currentArticle: CollectionEntry<"articles">;
+}
+
+const { currentArticle } = Astro.props;
+
+const allArticles = await getCollection("articles", ({ data }) => !data.draft);
+
+const relatedArticles = allArticles
+    .filter((article) => article.id !== currentArticle.id)
+    .sort((a, b) => {
+        const aScore = a.data.category === currentArticle.data.category ? 1 : 0;
+
+        const bScore = b.data.category === currentArticle.data.category ? 1 : 0;
+
+        if (aScore !== bScore) {
+            return bScore - aScore;
+        }
+
+        return b.data.pubDate.getTime() - a.data.pubDate.getTime();
+    })
+    .slice(0, 3);
+---
+
+{
+    relatedArticles.length > 0 && (
+        <section class="related-articles">
+            <header class="section-header">
+                <h2>Continue Reading</h2>
+                <p>More articles from The Technology Joint.</p>
+            </header>
+
+            <div class="article-grid">
+                {relatedArticles.map((article) => (
+                    <article class="article-card">
+                        <a href={`/articles/${article.id}/`} class="card-link">
+                            <span class="category">
+                                {article.data.category}
+                            </span>
+
+                            <h3>{article.data.title}</h3>
+
+                            <p>{article.data.description}</p>
+
+                            <div class="meta">
+                                <span>{article.data.author}</span>
+
+                                <span>•</span>
+
+                                <time
+                                    datetime={article.data.pubDate.toISOString()}
+                                >
+                                    {article.data.pubDate.toLocaleDateString(
+                                        "en-US",
+                                        {
+                                            month: "short",
+                                            day: "numeric",
+                                            year: "numeric",
+                                        },
+                                    )}
+                                </time>
+                            </div>
+                        </a>
+                    </article>
+                ))}
+            </div>
+        </section>
+    )
+}
+
+<style>
+    .related-articles {
+        margin-top: 5rem;
+
+        padding-top: 3rem;
+
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .section-header {
+        margin-bottom: 2rem;
+    }
+
+    .section-header h2 {
+        margin: 0 0 0.5rem;
+
+        font-size: 1.8rem;
+    }
+
+    .section-header p {
+        margin: 0;
+
+        color: var(--color-muted);
+    }
+
+    .article-grid {
+        display: grid;
+
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+
+        gap: 1.5rem;
+    }
+
+    .article-card {
+        border: 1px solid #e5e7eb;
+
+        border-radius: 18px;
+
+        overflow: hidden;
+
+        transition: 0.25s ease;
+
+        background: #fff;
+    }
+
+    .article-card:hover {
+        transform: translateY(-4px);
+
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.08);
+    }
+
+    .card-link {
+        display: block;
+
+        padding: 1.5rem;
+
+        color: inherit;
+
+        text-decoration: none;
+
+        height: 100%;
+    }
+
+    .category {
+        display: inline-block;
+
+        margin-bottom: 1rem;
+
+        padding: 0.35rem 0.8rem;
+
+        border-radius: 999px;
+
+        background: #eef2ff;
+
+        color: var(--color-primary);
+
+        font-size: 0.75rem;
+
+        font-weight: 700;
+
+        text-transform: uppercase;
+
+        letter-spacing: 0.05em;
+    }
+
+    .article-card h3 {
+        margin: 0 0 0.9rem;
+
+        line-height: 1.35;
+
+        font-size: 1.25rem;
+    }
+
+    .article-card p {
+        margin: 0;
+
+        color: var(--color-muted);
+
+        line-height: 1.7;
+    }
+
+    .meta {
+        display: flex;
+
+        flex-wrap: wrap;
+
+        gap: 0.5rem;
+
+        margin-top: 1.5rem;
+
+        font-size: 0.85rem;
+
+        color: #64748b;
+    }
+
+    @media (max-width: 768px) {
+        .article-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

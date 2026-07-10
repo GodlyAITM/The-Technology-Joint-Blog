@@ -1,0 +1,122 @@
+---
+import SectionHeading from "./SectionHeading.astro";
+import { site } from "../../data/site";
+---
+
+<section class="services">
+    <div class="container">
+        <SectionHeading
+            eyebrow="SEO & Content Strategy"
+            title="Grow Your Business Through Better Search Visibility"
+            description="Beyond publishing technology content, The Technology Joint helps businesses attract more qualified visitors through strategic SEO and high-quality content."
+        />
+
+        <div class="service-grid">
+            <article class="service-card">
+                <h3>Technical SEO</h3>
+
+                <p>
+                    Improve your website's structure, speed and technical
+                    foundation so search engines can crawl and rank it more
+                    effectively.
+                </p>
+            </article>
+
+            <article class="service-card">
+                <h3>Content Strategy</h3>
+
+                <p>
+                    Build topical authority with long-form content designed for
+                    both readers and search engines.
+                </p>
+            </article>
+
+            <article class="service-card">
+                <h3>SEO Content Writing</h3>
+
+                <p>
+                    Research-driven articles that answer real search intent,
+                    strengthen your brand and generate sustainable organic
+                    traffic.
+                </p>
+            </article>
+        </div>
+
+        <div class="cta">
+            <h3>Ready to improve your rankings?</h3>
+
+            <p>
+                Whether you're launching a new website or growing an existing
+                one, let's discuss how a stronger SEO strategy can help.
+            </p>
+
+            <a class="button" href={`mailto:${site.email}`}>
+                Book a Discovery Conversation
+            </a>
+        </div>
+    </div>
+</section>
+
+<style>
+    .services {
+        padding: 6rem 0;
+
+        background: #f8fafc;
+    }
+
+    .service-grid {
+        display: grid;
+
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+
+        gap: 2rem;
+
+        margin: 3rem 0;
+    }
+
+    .service-card {
+        background: white;
+
+        padding: 2rem;
+
+        border-radius: 18px;
+
+        border: 1px solid var(--color-border);
+    }
+
+    .service-card h3 {
+        margin-bottom: 1rem;
+    }
+
+    .service-card p {
+        line-height: 1.8;
+
+        color: var(--color-muted);
+    }
+
+    .cta {
+        text-align: center;
+
+        max-width: 720px;
+
+        margin: 4rem auto 0;
+    }
+
+    .button {
+        display: inline-block;
+
+        margin-top: 2rem;
+
+        padding: 1rem 2rem;
+
+        background: var(--color-primary);
+
+        color: white;
+
+        text-decoration: none;
+
+        border-radius: 999px;
+
+        font-weight: 700;
+    }
+</style>

@@ -1,43 +1,109 @@
-<nav>
+---
+const navItems = [
+    { label: "Home", href: "/" },
+    { label: "Articles", href: "/articles" },
+    { label: "About", href: "/about" },
+    { label: "Contact", href: "/contact" },
+];
+
+const currentPath = Astro.url.pathname;
+---
+
+<nav aria-label="Main Navigation">
     <ul>
-        <li><a href="/">Home</a></li>
-
-        <li><a href="/ai">AI</a></li>
-
-        <li><a href="/software">Software</a></li>
-
-        <li><a href="/cybersecurity">Cybersecurity</a></li>
-
-        <li><a href="/smartphones">Smartphones</a></li>
-
-        <li><a href="/reviews">Reviews</a></li>
-
-        <li><a href="/buying-guides">Buying Guides</a></li>
-
-        <li><a href="/about">About</a></li>
-
-        <li><a href="/contact">Contact</a></li>
+        {
+            navItems.map((item) => (
+                <li>
+                    <a
+                        href={item.href}
+                        class={currentPath === item.href ? "active" : ""}
+                    >
+                        {item.label}
+                    </a>
+                </li>
+            ))
+        }
     </ul>
 </nav>
 
 <style>
+    nav {
+        display: flex;
+
+        align-items: center;
+    }
+
     ul {
         display: flex;
+
+        align-items: center;
 
         gap: 2rem;
 
         list-style: none;
 
-        padding: 0;
-
         margin: 0;
+
+        padding: 0;
+    }
+
+    li {
+        margin: 0;
+
+        padding: 0;
     }
 
     a {
-        font-weight: 500;
+        position: relative;
+
+        text-decoration: none;
+
+        font-weight: 600;
+
+        color: var(--color-text);
+
+        transition: 0.25s ease;
+
+        padding: 0.35rem 0;
     }
 
     a:hover {
         color: var(--color-primary);
+    }
+
+    a.active {
+        color: var(--color-primary);
+    }
+
+    a.active::after {
+        content: "";
+
+        position: absolute;
+
+        left: 0;
+
+        bottom: -6px;
+
+        width: 100%;
+
+        height: 2px;
+
+        background: var(--color-primary);
+
+        border-radius: 999px;
+    }
+
+    @media (max-width: 768px) {
+        ul {
+            gap: 1rem;
+
+            flex-wrap: wrap;
+
+            justify-content: flex-end;
+        }
+
+        a {
+            font-size: 0.95rem;
+        }
     }
 </style>

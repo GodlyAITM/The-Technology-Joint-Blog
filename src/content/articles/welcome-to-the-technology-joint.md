@@ -1,20 +1,19 @@
 ---
 title: "Welcome to The Technology Joint"
-description: "Introducing our new technology publication."
 
-publishDate: 2026-06-27
+description: "Introducing our mission and what readers can expect."
+
+pubDate: 2026-07-05
 
 author: "Israel Alabi"
 
-category: "Technology"
+category: "Editorial"
 
 tags:
 
-  - Technology
-
-  - Editorial
-
-cover: "/images/hero.jpg"
+- Technology
+- Editorial
+- Welcome
 
 featured: true
 
@@ -23,6 +22,18 @@ draft: false
 
 # Welcome
 
-This is the very first article published on **The Technology Joint**.
+Welcome to **The Technology Joint**.
 
-Over the coming months this publication will grow into a trusted source for technology news, software reviews, cybersecurity education and practical buying advice.
+This publication exists to simplify technology through practical,
+research-backed and trustworthy content.
+
+Our editorial coverage focuses on:
+
+- Cybersecurity
+- Software
+- Artificial Intelligence
+- Consumer Technology
+- SEO
+- Digital Growth
+
+We're excited to have you here.

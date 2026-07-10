@@ -1,0 +1,39 @@
+---
+interface Props {
+    title: string;
+
+    description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<section class="pagehero">
+    <div class="container">
+        <h1>{title}</h1>
+
+        <p>{description}</p>
+    </div>
+</section>
+
+<style>
+    .pagehero {
+        padding: 6rem 0;
+
+        background: #f8fafc;
+
+        text-align: center;
+    }
+
+    .pagehero p {
+        max-width: 700px;
+
+        margin: 2rem auto 0;
+
+        font-size: 1.15rem;
+
+        line-height: 1.8;
+
+        color: var(--color-muted);
+    }
+</style>

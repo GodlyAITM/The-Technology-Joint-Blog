@@ -1,51 +1,57 @@
 ---
+import { getCollection, type CollectionEntry } from "astro:content";
 import SectionHeading from "./SectionHeading.astro";
 import ArticleCard from "./ArticleCard.astro";
+
+const featuredArticles = (
+    await getCollection(
+        "articles",
+        (article: CollectionEntry<"articles">) =>
+            !article.data.draft && article.data.featured,
+    )
+).sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
 ---
 
 <section class="featured">
     <div class="container">
         <SectionHeading
-            eyebrow="Featured"
-            title="Editor's Picks"
-            description="Start with our most valuable technology guides and expert insights."
+            eyebrow="Editor's Picks"
+            title="Featured Articles"
+            description="Our best technology guides, editorials and practical resources."
         />
 
-        <div class="grid">
-            <ArticleCard
-                title="How to Stay Safe Online in 2026"
-                excerpt="Practical cybersecurity habits everyone should know."
-                category="Cybersecurity"
-                href="#"
-            />
-
-            <ArticleCard
-                title="The Best Productivity Software This Year"
-                excerpt="Our favourite tools for getting more done."
-                category="Software"
-                href="#"
-            />
-
-            <ArticleCard
-                title="AI Tools Worth Using"
-                excerpt="A realistic guide to AI tools that genuinely improve your workflow."
-                category="Artificial Intelligence"
-                href="#"
-            />
-        </div>
+        {
+            featuredArticles.length > 0 ? (
+                <div class="grid">
+                    {featuredArticles.map((article) => (
+                        <ArticleCard article={article} />
+                    ))}
+                </div>
+            ) : (
+                <p class="empty">No featured articles yet.</p>
+            )
+        }
     </div>
 </section>
 
 <style>
+    .featured {
+        padding: 6rem 0;
+    }
+
     .grid {
         display: grid;
 
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
 
         gap: 2rem;
     }
 
-    .featured {
-        padding: 5rem 0;
+    .empty {
+        opacity: 0.7;
+
+        text-align: center;
+
+        padding: 2rem 0;
     }
 </style>

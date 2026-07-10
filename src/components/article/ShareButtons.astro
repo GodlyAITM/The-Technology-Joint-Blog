@@ -1,0 +1,207 @@
+---
+interface Props {
+    title: string;
+    url: string;
+}
+
+const { title, url } = Astro.props;
+
+const encodedTitle = encodeURIComponent(title);
+const encodedUrl = encodeURIComponent(url);
+
+const twitterUrl = `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`;
+
+const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
+
+const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+---
+
+<section class="share-buttons">
+    <h2>Share this article</h2>
+
+    <div class="share-grid">
+        <a
+            href={twitterUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Share on X"
+            class="share-btn x"
+        >
+            <span>𝕏</span>
+
+            <span>X</span>
+        </a>
+
+        <a
+            href={linkedinUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Share on LinkedIn"
+            class="share-btn linkedin"
+        >
+            <span>in</span>
+
+            <span>LinkedIn</span>
+        </a>
+
+        <a
+            href={facebookUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Share on Facebook"
+            class="share-btn facebook"
+        >
+            <span>f</span>
+
+            <span>Facebook</span>
+        </a>
+
+        <button id="copy-link" class="share-btn copy" type="button">
+            <span>🔗</span>
+
+            <span>Copy Link</span>
+        </button>
+
+        <button id="native-share" class="share-btn native" type="button">
+            <span>📤</span>
+
+            <span>Share</span>
+        </button>
+    </div>
+</section>
+
+<script
+    is:inline
+    define:vars={{
+        articleTitle: title,
+        articleUrl: url,
+    }}
+>
+    const copyButton = document.getElementById("copy-link");
+
+    copyButton?.addEventListener("click", async () => {
+        try {
+            await navigator.clipboard.writeText(articleUrl);
+
+            copyButton.innerHTML = `
+            <span>✓</span>
+            <span>Copied!</span>
+        `;
+
+            setTimeout(() => {
+                copyButton.innerHTML = `
+                <span>🔗</span>
+                <span>Copy Link</span>
+            `;
+            }, 2000);
+        } catch {
+            alert("Unable to copy link.");
+        }
+    });
+
+    const nativeButton = document.getElementById("native-share");
+
+    if (!navigator.share) {
+        nativeButton?.remove();
+    } else {
+        nativeButton?.addEventListener("click", async () => {
+            try {
+                await navigator.share({
+                    title: articleTitle,
+
+                    url: articleUrl,
+                });
+            } catch {}
+        });
+    }
+</script>
+
+<style>
+    .share-buttons {
+        margin: 4rem 0;
+
+        padding: 2rem;
+
+        border: 1px solid #e5e7eb;
+
+        border-radius: 20px;
+
+        background: #ffffff;
+    }
+
+    .share-buttons h2 {
+        margin: 0 0 1.5rem;
+
+        font-size: 1.25rem;
+    }
+
+    .share-grid {
+        display: grid;
+
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+
+        gap: 1rem;
+    }
+
+    .share-btn {
+        display: flex;
+
+        align-items: center;
+
+        justify-content: center;
+
+        gap: 0.75rem;
+
+        padding: 1rem;
+
+        border-radius: 12px;
+
+        border: none;
+
+        text-decoration: none;
+
+        cursor: pointer;
+
+        font-weight: 600;
+
+        transition: 0.2s ease;
+
+        color: #fff;
+
+        font-size: 0.95rem;
+    }
+
+    .share-btn:hover {
+        transform: translateY(-2px);
+    }
+
+    .x {
+        background: #000;
+    }
+
+    .linkedin {
+        background: #0a66c2;
+    }
+
+    .facebook {
+        background: #1877f2;
+    }
+
+    .copy {
+        background: #334155;
+    }
+
+    .native {
+        background: var(--color-primary);
+    }
+
+    .share-btn span:first-child {
+        font-size: 1.1rem;
+    }
+
+    @media (max-width: 768px) {
+        .share-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>

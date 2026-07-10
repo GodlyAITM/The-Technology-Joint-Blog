@@ -1,52 +1,42 @@
 ---
+import { getCollection, type CollectionEntry } from "astro:content";
+
 import SectionHeading from "./SectionHeading.astro";
 import ArticleCard from "./ArticleCard.astro";
+
+const latestArticles = (
+    await getCollection(
+        "articles",
+        (article: CollectionEntry<"articles">) => !article.data.draft,
+    )
+)
+    .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
+    .slice(0, 6);
 ---
 
 <section class="latest">
     <div class="container">
         <SectionHeading
             eyebrow="Latest"
-            title="Fresh From The Technology Joint"
-            description="The newest articles, guides and practical technology insights."
+            title="Latest Articles"
+            description="Fresh technology insights, practical tutorials and industry analysis."
         />
 
         <div class="grid">
-            <ArticleCard
-                title="Windows 11 Tips Every User Should Know"
-                excerpt="Simple tweaks that improve productivity and security."
-                category="Windows"
-                href="#"
-            />
-
-            <ArticleCard
-                title="How to Protect Your Smartphone"
-                excerpt="Security habits that prevent common attacks."
-                category="Cybersecurity"
-                href="#"
-            />
-
-            <ArticleCard
-                title="Best AI Productivity Tools"
-                excerpt="A practical comparison of tools that actually save time."
-                category="Artificial Intelligence"
-                href="#"
-            />
+            {latestArticles.map((article) => <ArticleCard article={article} />)}
         </div>
     </div>
 </section>
 
 <style>
     .latest {
-        padding: 5rem 0;
-
-        background: #f8fafc;
+        padding: 6rem 0;
     }
 
     .grid {
         display: grid;
 
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
 
         gap: 2rem;
     }

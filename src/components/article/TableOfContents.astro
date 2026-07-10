@@ -1,0 +1,107 @@
+---
+interface Heading {
+    depth: number;
+    slug: string;
+    text: string;
+}
+
+interface Props {
+    headings: Heading[];
+}
+
+const { headings } = Astro.props;
+---
+
+{
+    headings.length > 0 && (
+        <aside class="toc">
+            <div class="toc-card">
+                <h2>On this page</h2>
+
+                <nav>
+                    <ul>
+                        {headings
+                            .filter(
+                                (heading) =>
+                                    heading.depth === 2 || heading.depth === 3,
+                            )
+                            .map((heading) => (
+                                <li
+                                    class={
+                                        heading.depth === 3
+                                            ? "level-3"
+                                            : "level-2"
+                                    }
+                                >
+                                    <a href={`#${heading.slug}`}>
+                                        {heading.text}
+                                    </a>
+                                </li>
+                            ))}
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+    )
+}
+
+<style>
+    .toc {
+        position: sticky;
+        top: 110px;
+        align-self: start;
+    }
+
+    .toc-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 18px;
+        padding: 1.5rem;
+        background: #fff;
+    }
+
+    .toc-card h2 {
+        margin: 0 0 1rem;
+        font-size: 1rem;
+    }
+
+    .toc ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .toc li {
+        margin-bottom: 0.85rem;
+    }
+
+    .toc li:last-child {
+        margin-bottom: 0;
+    }
+
+    .toc a {
+        text-decoration: none;
+        color: #475569;
+        line-height: 1.55;
+        transition: 0.2s;
+    }
+
+    .toc a:hover {
+        color: var(--color-primary);
+    }
+
+    .level-2 {
+        font-weight: 600;
+    }
+
+    .level-3 {
+        margin-left: 1rem;
+        font-size: 0.93rem;
+    }
+
+    @media (max-width: 960px) {
+        .toc {
+            position: static;
+            margin-bottom: 2rem;
+        }
+    }
+</style>

@@ -1,0 +1,98 @@
+---
+interface Props {
+    author: string;
+    published: Date;
+    updated?: Date;
+    readingTime: number;
+}
+
+const { author, published, updated, readingTime } = Astro.props;
+
+const publishedDate = published.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+});
+
+const updatedDate = updated
+    ? updated.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+      })
+    : null;
+---
+
+<div class="article-meta">
+    <div class="meta-item">
+        <span class="label">Author</span>
+        <span>{author}</span>
+    </div>
+
+    <div class="meta-item">
+        <span class="label">Published</span>
+        <time datetime={published.toISOString()}>
+            {publishedDate}
+        </time>
+    </div>
+
+    {
+        updatedDate && (
+            <div class="meta-item">
+                <span class="label">Updated</span>
+                <time datetime={updated!.toISOString()}>{updatedDate}</time>
+            </div>
+        )
+    }
+
+    <div class="meta-item">
+        <span class="label">Reading Time</span>
+        <span>{readingTime} min read</span>
+    </div>
+</div>
+
+<style>
+    .article-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 2rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .meta-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        padding: 0.85rem 1rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background: #fff;
+        min-width: 170px;
+    }
+
+    .label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+
+    .meta-item span:last-child,
+    .meta-item time {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    @media (max-width: 768px) {
+        .article-meta {
+            flex-direction: column;
+        }
+
+        .meta-item {
+            width: 100%;
+        }
+    }
+</style>

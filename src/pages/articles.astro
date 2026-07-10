@@ -1,0 +1,60 @@
+---
+import { getCollection, type CollectionEntry } from "astro:content";
+
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/layouts/Header.astro";
+import Footer from "../components/layouts/Footer.astro";
+import PageHero from "../components/layouts/PageHero.astro";
+import ArticleCard from "../components/layouts/ArticleCard.astro";
+
+const articles = (
+    await getCollection(
+        "articles",
+        (article: CollectionEntry<"articles">) => !article.data.draft,
+    )
+).sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+---
+
+<BaseLayout
+    title="Articles | The Technology Joint"
+    description="Technology articles from The Technology Joint."
+>
+    <Header />
+
+    <main>
+        <PageHero
+            title="Technology Articles"
+            description="Practical technology guides, cybersecurity insights, software reviews and digital growth resources."
+        />
+
+        <section class="articles">
+            <div class="container">
+                <div class="grid">
+                    {
+                        articles.map((article) => (
+                            <ArticleCard article={article} />
+                        ))
+                    }
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <Footer />
+</BaseLayout>
+
+<style>
+    .articles {
+        padding: 5rem 0;
+    }
+
+    .grid {
+        display: grid;
+
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+
+        gap: 2rem;
+
+        align-items: start;
+    }
+</style>
