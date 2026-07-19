@@ -9,15 +9,14 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "check": "astro check",
+    "lint": "astro check",
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/rss": "^4.0.19",
-    "@astrojs/sitemap": "^3.7.3",
+    "@astrojs/rss": "^4.0.0",
+    "@astrojs/sitemap": "^3.0.0",
     "astro": "^7.0.3",
     "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "lightningcss-win32-x64-msvc": "^1.32.0"
   }
 }
