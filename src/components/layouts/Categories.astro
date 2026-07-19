@@ -1,55 +1,61 @@
 ---
 import SectionHeading from "./SectionHeading.astro";
+import { getAllCategories } from "../../lib/articles";
+import { getCategoryUrl } from "../../lib/seo";
+
+const categories = await getAllCategories();
 ---
 
-<section>
+<section class="categories-section">
     <div class="container">
         <SectionHeading
             eyebrow="Topics"
-            title="Explore Technology"
-            description="Browse our growing library of technology content."
+            title="Browse by category"
+            description="Each article is automatically grouped by category. Add category tags in frontmatter and the system will sort it for you."
         />
 
-        <div class="categories">
-            <a href="#">Cybersecurity</a>
-
-            <a href="#">Artificial Intelligence</a>
-
-            <a href="#">Software</a>
-
-            <a href="#">Smartphones</a>
-
-            <a href="#">Windows</a>
-
-            <a href="#">Industry News</a>
+        <div class="category-list">
+            {
+                categories.map((category) => (
+                    <a href={getCategoryUrl(category)}>{category}</a>
+                ))
+            }
         </div>
     </div>
 </section>
 
 <style>
-    section {
-        padding: 5rem 0;
+    .categories-section {
+        padding: 6rem 0;
+        background: var(--color-surface);
+        border-top: 1px solid var(--color-border);
     }
 
-    .categories {
-        display: flex;
-
-        flex-wrap: wrap;
-
+    .category-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 1rem;
+        margin-top: 2rem;
     }
 
-    .categories a {
-        padding: 1rem 1.5rem;
-
+    .category-list a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem 1.25rem;
         border-radius: 999px;
-
-        background: #eef2ff;
-
-        text-decoration: none;
-
-        font-weight: 700;
-
+        background: var(--color-surface-alt);
         color: var(--color-primary);
+        font-weight: 700;
+        text-decoration: none;
+        border: 1px solid transparent;
+        transition:
+            border-color var(--transition),
+            background var(--transition);
+    }
+
+    .category-list a:hover {
+        border-color: var(--color-primary);
+        background: rgba(37, 99, 235, 0.08);
     }
 </style>

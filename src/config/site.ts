@@ -10,7 +10,7 @@ export const SITE = {
 
     language: "en",
 
-    author: "The Technology Joint",
+    author: "Israel Alabi",
 
     email: "israel.alabi.seo@gmail.com",
 
@@ -22,25 +22,19 @@ export const SITE = {
 
     defaultHero: "/images/default-hero.jpg",
 
+    founderImage: "/images/founder.jpg",
+
     copyright:
         `© ${new Date().getFullYear()} The Technology Joint`,
 
     social: {
-
         github: "",
-
         linkedin: "",
-
         x: "",
-
         facebook: "",
-
         youtube: "",
-
-        instagram: ""
-
-    }
-
+        instagram: "",
+    },
 };
 
 export type SiteConfig = typeof SITE;

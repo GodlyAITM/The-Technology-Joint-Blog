@@ -1,0 +1,41 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/layouts/Header.astro";
+import Footer from "../components/layouts/Footer.astro";
+import SearchBox from "../components/search/SearchBox.astro";
+---
+
+<BaseLayout
+    title="Search | The Technology Joint"
+    description="Search articles across The Technology Joint."
+>
+    <Header />
+
+    <main class="search-page">
+        <div class="container">
+            <h1>Search</h1>
+
+            <p>Search articles by title, category, author or tags.</p>
+
+            <SearchBox />
+        </div>
+    </main>
+
+    <Footer />
+</BaseLayout>
+
+<style>
+    .search-page {
+        padding: 5rem 0;
+    }
+
+    .search-page h1 {
+        margin-bottom: 1rem;
+    }
+
+    .search-page p {
+        margin-bottom: 2rem;
+
+        color: var(--color-muted);
+    }
+</style>

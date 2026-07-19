@@ -1,0 +1,71 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Header from "../../components/layouts/Header.astro";
+import Footer from "../../components/layouts/Footer.astro";
+import ArticleCard from "../../components/layouts/ArticleCard.astro";
+import {
+    getAllCategories,
+    getArticlesByCategory,
+    type Article,
+} from "../../lib/articles";
+import { slugify } from "../../lib/seo";
+
+interface Props {
+    category: string;
+}
+
+export async function getStaticPaths() {
+    const categories = await getAllCategories();
+
+    return categories.map((cat) => ({
+        params: {
+            category: slugify(cat),
+        },
+        props: {
+            category: cat,
+        },
+    }));
+}
+
+const { category } = Astro.props as Props;
+
+const articles = await getArticlesByCategory(category);
+---
+
+<BaseLayout
+    title={`${category} | The Technology Joint`}
+    description={`Articles in the ${category} category`}
+>
+    <Header />
+
+    <main>
+        <section class="category-page">
+            <div class="container">
+                <h1>{category}</h1>
+
+                <div class="grid">
+                    {
+                        articles.map((article: Article) => (
+                            <ArticleCard article={article} />
+                        ))
+                    }
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <Footer />
+</BaseLayout>
+
+<style>
+    .category-page {
+        padding: 4rem 0;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+</style>

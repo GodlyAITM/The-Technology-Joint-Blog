@@ -1,22 +1,89 @@
 ---
 import "../styles/global.css";
+import { SITE } from "../config/site";
 
 interface Props {
     title?: string;
-
     description?: string;
+    canonical?: string;
+    image?: string;
+    noindex?: boolean;
 }
 
 const {
-    title = "The Technology Joint",
-
-    description = "Technology insights, reviews and cybersecurity guides.",
+    title = SITE.title,
+    description = SITE.description,
+    canonical,
+    image = SITE.defaultHero,
+    noindex = false,
 } = Astro.props;
+
+const canonicalUrl = canonical
+    ? new URL(canonical, SITE.url).toString()
+    : Astro.url.href;
+
+const imageUrl = new URL(image, SITE.url).toString();
+
+const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+
+    name: SITE.name,
+
+    url: SITE.url,
+
+    logo: imageUrl,
+
+    email: SITE.email,
+
+    sameAs: Object.values(SITE.social).filter(Boolean),
+};
+
+const websiteSchema = {
+    "@context": "https://schema.org",
+
+    "@type": "WebSite",
+
+    name: SITE.name,
+
+    url: SITE.url,
+
+    description: SITE.description,
+
+    inLanguage: SITE.language,
+
+    publisher: {
+        "@type": "Organization",
+        name: SITE.name,
+    },
+};
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={SITE.language}>
     <head>
+        <script is:inline>
+            (function () {
+                try {
+                    const stored = localStorage.getItem("theme");
+                    const prefersDark =
+                        window.matchMedia &&
+                        window.matchMedia("(prefers-color-scheme: dark)")
+                            .matches;
+
+                    const theme = stored
+                        ? stored
+                        : prefersDark
+                          ? "dark"
+                          : "light";
+
+                    document.documentElement.setAttribute("data-theme", theme);
+                } catch (e) {
+                    // ignore
+                }
+            })();
+        </script>
+
         <meta charset="UTF-8" />
 
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -25,12 +92,97 @@ const {
 
         <meta name="description" content={description} />
 
+        <meta name="author" content={SITE.author} />
+
         <meta name="theme-color" content="#2563EB" />
 
+        <meta
+            name="robots"
+            content={noindex ? "noindex,nofollow" : "index,follow"}
+        />
+
+        <link rel="canonical" href={canonicalUrl} />
+
         <link rel="icon" href="/favicon.svg" />
+
+        <!-- Open Graph -->
+
+        <meta property="og:type" content="website" />
+
+        <meta property="og:site_name" content={SITE.name} />
+
+        <meta property="og:title" content={title} />
+
+        <meta property="og:description" content={description} />
+
+        <meta property="og:url" content={canonicalUrl} />
+
+        <meta property="og:image" content={imageUrl} />
+
+        <meta property="og:locale" content="en_US" />
+
+        <!-- Twitter -->
+
+        <meta name="twitter:card" content="summary_large_image" />
+
+        <meta name="twitter:title" content={title} />
+
+        <meta name="twitter:description" content={description} />
+
+        <meta name="twitter:image" content={imageUrl} />
+
+        <!-- JSON-LD -->
+
+        <script
+            type="application/ld+json"
+            set:html={JSON.stringify(organizationSchema)}
+        />
+
+        <script
+            type="application/ld+json"
+            set:html={JSON.stringify(websiteSchema)}
+        />
+
+        <!-- Page-level SEO -->
+
+        <slot name="head" />
     </head>
 
     <body>
         <slot />
+        <script is:inline>
+            (function () {
+                function initThemeToggle() {
+                    const btn = document.getElementById("theme-toggle");
+                    if (!btn) return;
+
+                    btn.addEventListener("click", function () {
+                        const current =
+                            document.documentElement.getAttribute(
+                                "data-theme",
+                            ) === "dark"
+                                ? "dark"
+                                : "light";
+                        const next = current === "dark" ? "light" : "dark";
+                        document.documentElement.setAttribute(
+                            "data-theme",
+                            next,
+                        );
+                        try {
+                            localStorage.setItem("theme", next);
+                        } catch (e) {}
+                    });
+                }
+
+                if (document.readyState === "loading") {
+                    document.addEventListener(
+                        "DOMContentLoaded",
+                        initThemeToggle,
+                    );
+                } else {
+                    initThemeToggle();
+                }
+            })();
+        </script>
     </body>
 </html>

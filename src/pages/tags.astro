@@ -1,0 +1,67 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/layouts/Header.astro";
+import Footer from "../components/layouts/Footer.astro";
+import SectionHeading from "../components/layouts/SectionHeading.astro";
+import { getAllTags } from "../lib/articles";
+import { getTagUrl } from "../lib/seo";
+
+const tags = await getAllTags();
+---
+
+<BaseLayout
+    title="Tags | The Technology Joint"
+    description="Browse tags across our articles."
+>
+    <Header />
+
+    <main>
+        <section class="tags">
+            <div class="container">
+                <SectionHeading
+                    eyebrow="Browse"
+                    title="Tags"
+                    description="All tags used in published articles."
+                />
+
+                <div class="grid">
+                    {
+                        tags.map((tag) => (
+                            <a class="tag-card" href={getTagUrl(tag)}>
+                                {tag}
+                            </a>
+                        ))
+                    }
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <Footer />
+</BaseLayout>
+
+<style>
+    .tags {
+        padding: 4rem 0;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+
+    .tag-card {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.65rem 0.85rem;
+        border-radius: 999px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        text-decoration: none;
+        color: var(--color-text);
+        font-weight: 700;
+    }
+</style>

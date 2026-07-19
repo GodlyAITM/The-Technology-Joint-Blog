@@ -36,6 +36,15 @@ const formattedDate = cardPubDate
     : "";
 ---
 
+    {articleData?.heroImage && (
+        <figure class="card-image">
+            <img
+                src={articleData.heroImage}
+                alt={articleData.featuredImageAlt ?? cardTitle}
+                loading="lazy"
+            />
+        </figure>
+    )}
 <article class="card">
     {cardCategory && <div class="badge">{cardCategory}</div>}
 
@@ -116,7 +125,7 @@ const formattedDate = cardPubDate
     }
 
     .card h2 a {
-        color: inherit;
+            background: var(--color-surface);
 
         text-decoration: none;
     }
@@ -128,9 +137,22 @@ const formattedDate = cardPubDate
 
         flex-grow: 1;
     }
-
-    .meta {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-md);
+            border-color: rgba(37, 99, 235, 0.2);
         display: flex;
+
+        .card-image {
+            margin: 0 -2rem 1.5rem;
+        }
+
+        .card-image img {
+            width: 100%;
+            display: block;
+            object-fit: cover;
+            aspect-ratio: 16 / 10;
+            border-radius: 20px;
+        }
 
         gap: 0.75rem;
 

@@ -1,0 +1,70 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/layouts/Header.astro";
+import Footer from "../components/layouts/Footer.astro";
+import SectionHeading from "../components/layouts/SectionHeading.astro";
+import { getAllCategories } from "../lib/articles";
+import { getCategoryUrl } from "../lib/seo";
+
+const categories = await getAllCategories();
+---
+
+<BaseLayout
+    title="Categories | The Technology Joint"
+    description="Browse article categories."
+>
+    <Header />
+
+    <main>
+        <section class="categories">
+            <div class="container">
+                <SectionHeading
+                    eyebrow="Browse"
+                    title="Categories"
+                    description="All published categories. Click a category to view related articles."
+                />
+
+                <div class="grid">
+                    {
+                        categories.map((category) => (
+                            <a
+                                class="category-card"
+                                href={getCategoryUrl(category)}
+                            >
+                                {category}
+                            </a>
+                        ))
+                    }
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <Footer />
+</BaseLayout>
+
+<style>
+    .categories {
+        padding: 4rem 0;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .category-card {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem 1.25rem;
+        border-radius: 12px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        text-decoration: none;
+        color: var(--color-text);
+        font-weight: 700;
+    }
+</style>

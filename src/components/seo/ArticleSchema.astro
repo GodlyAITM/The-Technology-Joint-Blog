@@ -1,0 +1,57 @@
+---
+import { SITE } from "../../config/site";
+
+interface Props {
+    title: string;
+    description: string;
+    author: string;
+    published: Date;
+    updated?: Date;
+    image?: string;
+    canonical: string;
+}
+
+const { title, description, author, published, updated, image, canonical } =
+    Astro.props;
+
+const schema = {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+
+    headline: title,
+
+    description,
+
+    image: image ? new URL(image, SITE.url).toString() : undefined,
+
+    datePublished: published.toISOString(),
+
+    dateModified: (updated ?? published).toISOString(),
+
+    mainEntityOfPage: canonical,
+
+    url: canonical,
+
+    author: {
+        "@type": "Person",
+
+        name: author,
+    },
+
+    publisher: {
+        "@type": "Organization",
+
+        name: SITE.name,
+
+        url: SITE.url,
+
+        logo: {
+            "@type": "ImageObject",
+
+            url: new URL(SITE.logo, SITE.url).toString(),
+        },
+    },
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(schema)} />

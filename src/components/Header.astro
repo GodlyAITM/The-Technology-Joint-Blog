@@ -1,5 +1,5 @@
 ---
-import Navigation from "./layout/Navigation.astro";
+import Navigation from "./layouts/Navigation.astro";
 ---
 
 <header>
@@ -12,15 +12,12 @@ import Navigation from "./layout/Navigation.astro";
 
 <style>
     header {
-        background: white;
-
+        background: var(--color-surface);
         border-bottom: 1px solid var(--color-border);
-
         position: sticky;
-
         top: 0;
-
         z-index: 999;
+        transition: background var(--transition);
     }
 
     .header {

@@ -1,0 +1,75 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/layouts/Header.astro";
+import Footer from "../components/layouts/Footer.astro";
+---
+
+<BaseLayout
+    title="404 - Page Not Found"
+    description="The page you requested could not be found."
+>
+    <Header />
+
+    <main class="error-page">
+        <div class="container">
+            <h1>404</h1>
+
+            <h2>Page Not Found</h2>
+
+            <p>
+                The page you're looking for doesn't exist or may have been
+                moved.
+            </p>
+
+            <a href="/" class="button"> Return Home </a>
+        </div>
+    </main>
+
+    <Footer />
+</BaseLayout>
+
+<style>
+    .error-page {
+        min-height: 70vh;
+
+        display: grid;
+
+        place-items: center;
+
+        text-align: center;
+    }
+
+    .error-page h1 {
+        font-size: 6rem;
+
+        margin-bottom: 0.5rem;
+    }
+
+    .error-page h2 {
+        margin-bottom: 1rem;
+    }
+
+    .error-page p {
+        max-width: 600px;
+
+        margin: 0 auto 2rem;
+
+        color: var(--color-muted);
+    }
+
+    .button {
+        display: inline-block;
+
+        padding: 0.9rem 1.5rem;
+
+        background: var(--color-primary);
+
+        color: white;
+
+        border-radius: 8px;
+
+        text-decoration: none;
+
+        font-weight: 600;
+    }
+</style>
