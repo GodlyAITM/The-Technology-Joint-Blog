@@ -1,12 +1,10 @@
 import { defineConfig } from "astro/config";
 import sitemap from "@astrojs/sitemap";
 
-const site =
-    process.env.PUBLIC_SITE_URL ??
-    "https://your-github-username.github.io/the-technology-joint-blog";
-
 export default defineConfig({
-    site,
+    site: "https://godlyaitm.github.io/the-technology-joint-blog",
+
+    base: "/the-technology-joint-blog/",
 
     integrations: [
         sitemap(),

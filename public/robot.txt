@@ -2,4 +2,4 @@ User-agent: *
 
 Allow: /
 
-Sitemap: https://your-github-username.github.io/the-technology-joint-blog/sitemap-index.xml
+Sitemap: https://GodlyAITM.github.io/The-Technology-Joint-Blog/sitemap-index.xml
