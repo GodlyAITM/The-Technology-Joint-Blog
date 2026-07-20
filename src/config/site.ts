@@ -15,7 +15,7 @@ export const SITE = {
     email: "israel.alabi.seo@gmail.com",
 
     url:
-        import.meta.env.PUBLIC_SITE_URL ??
+        import.meta.env.PUBLIC_SITE_URL?.trim() ||
         "http://localhost:4321",
 
     logo: "/images/logo.png",
