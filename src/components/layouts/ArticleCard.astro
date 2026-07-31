@@ -1,5 +1,6 @@
 ---
 import type { CollectionEntry } from "astro:content";
+import { getLocalImageUrl } from "../../lib/seo";
 
 interface Props {
     article?: CollectionEntry<"articles">;
@@ -28,7 +29,8 @@ const cardCategory = articleData?.category ?? category ?? "";
 const cardAuthor = articleData?.author ?? author ?? "";
 const cardPubDate = articleData?.pubDate ?? pubDate;
 const articleSlug = article ? article.id.replace(/\.md$/, "") : undefined;
-const cardHref = articleSlug ? `/articles/${articleSlug}` : href;
+const base = import.meta.env.BASE_URL;
+const cardHref = articleSlug ? `${base}articles/${articleSlug}` : href;
 const formattedDate = cardPubDate
     ? typeof cardPubDate === "string"
         ? cardPubDate
@@ -39,7 +41,7 @@ const formattedDate = cardPubDate
     {articleData?.heroImage && (
         <figure class="card-image">
             <img
-                src={articleData.heroImage}
+                src={getLocalImageUrl(articleData.heroImage)}
                 alt={articleData.featuredImageAlt ?? cardTitle}
                 loading="lazy"
             />

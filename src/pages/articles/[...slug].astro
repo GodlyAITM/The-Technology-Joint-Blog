@@ -25,6 +25,7 @@ import {
     getArticleUrl,
     getCanonicalUrl,
     getImageUrl,
+    getLocalImageUrl,
 } from "../../lib/seo";
 
 interface Props {
@@ -66,6 +67,8 @@ const canonicalUrl = getCanonicalUrl({
 
 const heroImage = getImageUrl(article.data.heroImage);
 
+const heroImageLocal = getLocalImageUrl(article.data.heroImage);
+
 const pageTitle = buildPageTitle(article.data.seoTitle ?? article.data.title);
 
 const pageDescription = buildMetaDescription(
@@ -86,7 +89,7 @@ const pageDescription = buildMetaDescription(
             author={article.data.author}
             published={article.data.pubDate}
             updated={article.data.updatedDate}
-            image={article.data.heroImage}
+            image={heroImage}
             canonical={canonicalUrl}
         />
 
@@ -124,7 +127,7 @@ const pageDescription = buildMetaDescription(
                 />
 
                 <HeroImage
-                    src={article.data.heroImage}
+                    src={heroImageLocal}
                     alt={article.data.featuredImageAlt}
                 />
             </div>
@@ -144,10 +147,10 @@ const pageDescription = buildMetaDescription(
 
                     <AuthorBox author={article.data.author} />
 
-                    <RelatedArticles currentArticle={article} />
-
                     <NewsletterCTA />
                 </article>
+
+                <RelatedArticles currentArticle={article} />
             </div>
         </section>
     </main>
@@ -204,6 +207,10 @@ const pageDescription = buildMetaDescription(
         color: var(--color-muted);
     }
 
+    .article-header .container {
+        width: min(1440px, calc(100% - 2rem));
+    }
+
     .article-content {
         padding: 4rem 0 6rem;
     }
@@ -211,11 +218,13 @@ const pageDescription = buildMetaDescription(
     .article-grid {
         display: grid;
 
-        grid-template-columns: 280px minmax(0, 760px);
+        grid-template-columns: 280px minmax(0, 760px) 280px;
 
-        gap: 4rem;
+        gap: 3rem;
 
         align-items: start;
+
+        width: min(1440px, calc(100% - 2rem));
     }
 
     .prose {
@@ -337,7 +346,6 @@ const pageDescription = buildMetaDescription(
     }
 
     .prose pre {
-    .prose pre {
         margin: 2.5rem 0;
         padding: 1.5rem;
         overflow: auto;
@@ -406,11 +414,11 @@ const pageDescription = buildMetaDescription(
     .article-content .prose {
         min-width: 0;
     }
-    @media (max-width: 1200px) {
+    @media (max-width: 1360px) {
         .article-grid {
-            grid-template-columns: 240px minmax(0, 1fr);
+            grid-template-columns: 220px minmax(0, 760px) 220px;
 
-            gap: 3rem;
+            gap: 2rem;
         }
     }
 
@@ -448,13 +456,7 @@ const pageDescription = buildMetaDescription(
         }
 
         .prose h3 {
-            font-size: 1.35rem;
-        }
-
-        .prose img {
-            margin: 2rem 0;
-
-            border-radius: 14px;
+            font-size: 1.5rem;
         }
 
         .prose blockquote {

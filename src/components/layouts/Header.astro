@@ -1,11 +1,13 @@
 ---
 import Navigation from "./Navigation.astro";
 import { SITE } from "../../config/site";
+
+const base = import.meta.env.BASE_URL;
 ---
 
 <header>
     <div class="container header">
-        <a href="/" class="logo">
+        <a href={base} class="logo">
             <img src={SITE.logo} alt="The Technology Joint logo" />
             <span>{SITE.name}</span>
         </a>

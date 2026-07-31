@@ -18,12 +18,11 @@ export const SITE = {
         import.meta.env.PUBLIC_SITE_URL?.trim() ||
         "http://localhost:4321",
 
-    logo: "/images/logo.png",
+    logo: `${import.meta.env.BASE_URL}images/logo.png`,
 
     defaultHero: "/images/default-hero.jpg",
 
-    founderImage: "/images/founder.jpg",
-
+    founderImage: `${import.meta.env.BASE_URL}images/founder.jpg`,
     copyright:
         `© ${new Date().getFullYear()} The Technology Joint`,
 

@@ -18,38 +18,37 @@ export function getCanonicalUrl(options: SEOOptions = {}): string {
 }
 
 export function getImageUrl(image?: string): string {
-    return new URL(
-        image ?? SITE.defaultHero,
-        SITE.url,
-    ).toString();
+    const base = SITE.url.replace(/\/$/, "");
+
+    const path = (image ?? SITE.defaultHero).replace(/^\//, "");
+
+    return `${base}/${path}`;
+}
+
+export function getLocalImageUrl(image?: string): string {
+    const path = (image ?? SITE.defaultHero).replace(/^\//, "");
+
+    return `${import.meta.env.BASE_URL}${path}`;
 }
 
 export function getArticleUrl(slug: string): string {
-    return new URL(
-        `/articles/${slug}/`,
-        SITE.url,
-    ).toString();
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    return `${base}/articles/${slug}/`;
 }
 
 export function getCategoryUrl(category: string): string {
-    return new URL(
-        `/categories/${slugify(category)}/`,
-        SITE.url,
-    ).toString();
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    return `${base}/categories/${slugify(category)}/`;
 }
 
 export function getTagUrl(tag: string): string {
-    return new URL(
-        `/tags/${slugify(tag)}/`,
-        SITE.url,
-    ).toString();
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    return `${base}/tags/${slugify(tag)}/`;
 }
 
 export function getAuthorUrl(author: string): string {
-    return new URL(
-        `/authors/${slugify(author)}/`,
-        SITE.url,
-    ).toString();
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    return `${base}/authors/${slugify(author)}/`;
 }
 
 export function slugify(value: string): string {

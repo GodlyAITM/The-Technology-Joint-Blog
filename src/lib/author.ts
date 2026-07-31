@@ -34,7 +34,7 @@ export const AUTHORS: Record<string, Author> = {
 
         bio: "Israel Alabi is the Founder and Editor-in-Chief of The Technology Joint. He writes practical, research-driven articles covering cybersecurity, artificial intelligence, software, consumer technology, SEO and digital growth. His mission is to make complex technology understandable and useful for professionals, businesses and everyday users.",
 
-        avatar: "/images/founder.jpg",
+        avatar: `${import.meta.env.BASE_URL}images/founder.jpg`,
 
         email: "israel.alabi.seo@gmail.com",
 
@@ -78,7 +78,7 @@ export function getAuthor(name: string): Author {
 
             bio: "Contributor to The Technology Joint.",
 
-            avatar: "/images/founder.jpg",
+            avatar: `${import.meta.env.BASE_URL}images/founder.jpg`,
 
         }
 

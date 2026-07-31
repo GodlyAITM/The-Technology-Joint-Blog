@@ -1,21 +1,37 @@
-<footer>
+<footer class="site-footer">
     <div class="container">
         <h3>The Technology Joint</h3>
 
-        <p>Technology. Software. Cybersecurity. AI.</p>
+        <p>
+            Technology. Software. Cybersecurity. AI.
+        </p>
 
-        <p>© 2026 The Technology Joint</p>
+        <p>
+            © 2026 The Technology Joint
+        </p>
     </div>
 </footer>
 
 <style>
-    footer {
-        background: #111827;
+    .site-footer {
+        background: var(--color-surface);
 
-        color: white;
+        color: var(--color-text);
 
         padding: 5rem 0;
 
         margin-top: 5rem;
+
+        border-top: 1px solid var(--color-border);
+    }
+
+    .site-footer h3 {
+        margin: 0 0 1rem;
+    }
+
+    .site-footer p {
+        margin: 0.5rem 0;
+
+        color: var(--color-muted);
     }
 </style>

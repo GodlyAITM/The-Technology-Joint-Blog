@@ -1,10 +1,12 @@
 ---
 import Navigation from "./layouts/Navigation.astro";
+
+const base = import.meta.env.BASE_URL;
 ---
 
 <header>
     <div class="container header">
-        <a href="/" class="logo"> The Technology Joint </a>
+        <a href={base} class="logo"> The Technology Joint </a>
 
         <Navigation />
     </div>

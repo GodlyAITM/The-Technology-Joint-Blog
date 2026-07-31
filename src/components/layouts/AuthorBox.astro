@@ -7,6 +7,7 @@ interface Props {
 
 const { author } = Astro.props;
 const authorData = getAuthor(author);
+const base = import.meta.env.BASE_URL;
 ---
 
 <section class="author-box">
@@ -26,7 +27,7 @@ const authorData = getAuthor(author);
                 {authorData.title}. {authorData.bio}
             </p>
 
-            <a href="/about"> Learn more → </a>
+            <a href={`${base}about`}> Learn more → </a>
         </div>
     </div>
 </section>

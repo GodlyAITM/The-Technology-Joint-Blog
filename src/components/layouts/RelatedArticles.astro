@@ -1,74 +1,157 @@
 ---
-import ArticleCard from "./ArticleCard.astro";
-
 import { getRelatedArticles, type Article } from "../../lib/articles";
+import { getLocalImageUrl } from "../../lib/seo";
 
 interface Props {
     currentArticle: Article;
     limit?: number;
 }
 
-const { currentArticle, limit = 3 } = Astro.props;
+const { currentArticle, limit = 5 } = Astro.props;
 
 const relatedArticles = await getRelatedArticles(currentArticle, limit);
+
+const base = import.meta.env.BASE_URL;
 ---
 
 {
     relatedArticles.length > 0 && (
-        <section class="related">
-            <div class="section-header">
+        <aside class="related-sidebar" aria-label="Related articles">
+            <div class="related-card">
                 <h2>Continue Reading</h2>
 
-                <p>More articles you may find useful.</p>
-            </div>
+                <ul>
+                    {relatedArticles.map((article) => {
+                        const slug = article.id.replace(/\.md$/, "");
 
-            <div class="related-grid">
-                {relatedArticles.map((article) => (
-                    <ArticleCard article={article} />
-                ))}
+                        return (
+                            <li>
+                                <a href={`${base}articles/${slug}`}>
+                                    {
+                                        article.data.heroImage && (
+                                            <img
+                                                src={getLocalImageUrl(article.data.heroImage)}
+                                                alt={article.data.featuredImageAlt ?? article.data.title}
+                                                loading="lazy"
+                                            />
+                                        )
+                                    }
+
+                                    <span class="item-body">
+                                        <span class="item-category">
+                                            {article.data.category}
+                                        </span>
+
+                                        <span class="item-title">
+                                            {article.data.title}
+                                        </span>
+                                    </span>
+                                </a>
+                            </li>
+                        );
+                    })}
+                </ul>
             </div>
-        </section>
+        </aside>
     )
 }
 
 <style>
-    .related {
-        margin-top: 5rem;
-
-        padding-top: 4rem;
-
-        border-top: 1px solid #e5e7eb;
+    .related-sidebar {
+        position: sticky;
+        top: 110px;
+        align-self: start;
     }
 
-    .section-header {
-        margin-bottom: 2rem;
+    .related-card {
+        border: 1px solid var(--color-border);
+        border-radius: 18px;
+        padding: 1.5rem;
+        background: var(--color-surface);
+        max-height: calc(100vh - 140px);
+        overflow-y: auto;
+        scrollbar-width: thin;
     }
 
-    .section-header h2 {
+    .related-card h2 {
+        margin: 0 0 1.25rem;
+        font-size: 1rem;
+    }
+
+    .related-card ul {
+        list-style: none;
         margin: 0;
-
-        font-size: 2rem;
+        padding: 0;
     }
 
-    .section-header p {
-        margin-top: 0.75rem;
-
-        color: var(--color-muted);
+    .related-card li {
+        margin-bottom: 1.5rem;
     }
 
-    .related-grid {
-        display: grid;
-
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-
-        gap: 2rem;
+    .related-card li:last-child {
+        margin-bottom: 0;
     }
 
-    @media (max-width: 768px) {
-        .related {
-            margin-top: 4rem;
+    .related-card a {
+        display: flex;
+        gap: 0.9rem;
+        align-items: flex-start;
+        text-decoration: none;
+    }
 
-            padding-top: 3rem;
+    .related-card img {
+        width: 88px;
+        aspect-ratio: 16 / 10;
+        object-fit: cover;
+        border-radius: 8px;
+        flex-shrink: 0;
+        background: var(--color-surface-alt);
+    }
+
+    @media (max-width: 1360px) {
+        .related-card img {
+            width: 72px;
+        }
+
+        .related-card a {
+            gap: 0.75rem;
+        }
+    }
+
+    .item-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        min-width: 0;
+    }
+
+    .item-category {
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--color-primary);
+    }
+
+    .item-title {
+        font-size: 0.92rem;
+        line-height: 1.4;
+        font-weight: 600;
+        color: var(--color-text);
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        transition: 0.2s;
+    }
+
+    .related-card a:hover .item-title {
+        color: var(--color-primary);
+    }
+
+    @media (max-width: 960px) {
+        .related-sidebar {
+            position: static;
         }
     }
 </style>
