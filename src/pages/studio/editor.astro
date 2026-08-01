@@ -2,277 +2,723 @@
 import { getCollection } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import StudioShell from "../../components/studio/StudioShell.astro";
+import { getAllAuthors } from "../../lib/author";
 
 const slug = Astro.url.searchParams.get("slug") || "";
+const isDuplicate = Astro.url.searchParams.get("duplicate") === "1";
 const posts = await getCollection("articles");
-const selectedPost = posts.find((post) => post.id === slug);
+const sourcePost = posts.find((post) => post.id === slug) ?? null;
 
-const article = selectedPost
+const authors = getAllAuthors();
+const categories = [
+    ...new Set(posts.map((post) => post.data.category).filter(Boolean)),
+].sort();
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+const isEditing = Boolean(sourcePost) && !isDuplicate;
+
+const article = sourcePost
     ? {
-          id: selectedPost.id,
-          slug: selectedPost.id,
-          title: selectedPost.data.title,
-          description: selectedPost.data.description,
-          category: selectedPost.data.category,
-          tags: selectedPost.data.tags.join(", "),
-          draft: selectedPost.data.draft,
-          featured: selectedPost.data.featured,
-          pubDate: selectedPost.data.pubDate.toISOString().slice(0, 10),
+          slug: sourcePost.id,
+          title: sourcePost.data.title,
+          description: sourcePost.data.description,
+          pubDate: sourcePost.data.pubDate.toISOString().slice(0, 10),
           updatedDate:
-              selectedPost.data.updatedDate?.toISOString().slice(0, 10) || "",
-          body: selectedPost.body,
+              sourcePost.data.updatedDate?.toISOString().slice(0, 10) || "",
+          author: sourcePost.data.author,
+          category: sourcePost.data.category,
+          tags: sourcePost.data.tags.join(", "),
+          featured: sourcePost.data.featured,
+          draft: isDuplicate ? true : sourcePost.data.draft,
+          heroImage: isDuplicate ? "" : sourcePost.data.heroImage || "",
+          featuredImageAlt: isDuplicate
+              ? ""
+              : sourcePost.data.featuredImageAlt || "",
+          seoTitle: sourcePost.data.seoTitle || "",
+          seoDescription: sourcePost.data.seoDescription || "",
+          canonicalURL: sourcePost.data.canonicalURL || "",
+          body: sourcePost.body,
       }
-    : null;
+    : {
+          slug: "",
+          title: "",
+          description: "",
+          pubDate: new Date().toISOString().slice(0, 10),
+          updatedDate: "",
+          author: authors[0]?.name ?? "Israel Alabi",
+          category: "",
+          tags: "",
+          featured: false,
+          draft: true,
+          heroImage: "",
+          featuredImageAlt: "",
+          seoTitle: "",
+          seoDescription: "",
+          canonicalURL: "",
+          body: "",
+      };
+
+const newSlugDefault =
+    isDuplicate && sourcePost ? `${sourcePost.id}-copy` : "";
+
+const authorOptions = [...new Set([...authors.map((a) => a.name), article.author])];
+
+const previewUrl =
+    isEditing && sourcePost && !sourcePost.data.draft
+        ? `${base}/articles/${sourcePost.id}/`
+        : null;
+
+const allSlugs = posts.map((post) => post.id);
 ---
 
 <BaseLayout
     title="Studio Editor | The Technology Joint"
     description="Edit existing articles from the private Studio workspace."
+    noindex
 >
-    <StudioShell active="articles">
+    <StudioShell active="editor">
         <header class="studio-header">
             <div>
                 <p class="studio-eyebrow">Content editor</p>
-                <h2>{article ? "Edit article" : "Create article"}</h2>
+                <h2>
+                    {isEditing
+                        ? "Edit article"
+                        : isDuplicate
+                          ? "Duplicate article"
+                          : "Create article"}
+                </h2>
             </div>
             <a
-                class="studio-button"
-                href={`${import.meta.env.BASE_URL}studio/articles`}
+                class="studio-button studio-button--secondary"
+                href={`${base}/studio/articles`}
                 >Back to list</a
             >
         </header>
 
-        <section class="studio-panel">
-            {
-                article ? (
-                    <form id="studio-editor-form" class="studio-form">
-                        <input type="hidden" name="slug" value={article.slug} />
-                        <label>
-                            Title
-                            <input name="title" value={article.title} />
-                        </label>
-                        <label>
-                            Description
-                            <textarea name="description" rows="3">
-                                {article.description}
-                            </textarea>
-                        </label>
-                        <label>
-                            Category
-                            <input name="category" value={article.category} />
-                        </label>
-                        <label>
-                            Tags
-                            <input name="tags" value={article.tags} />
-                        </label>
-                        <label>
-                            Published date
-                            <input name="pubDate" value={article.pubDate} />
-                        </label>
-                        <label>
-                            Updated date
-                            <input
-                                name="updatedDate"
-                                value={article.updatedDate}
-                            />
-                        </label>
-                        <label>
-                            Draft
-                            <input
-                                name="draft"
-                                type="checkbox"
-                                checked={article.draft}
-                            />
-                        </label>
-                        <label>
-                            Featured
-                            <input
-                                name="featured"
-                                type="checkbox"
-                                checked={article.featured}
-                            />
-                        </label>
-                        <label>
-                            Body
-                            <textarea name="body" rows="16">
-                                {article.body}
-                            </textarea>
-                        </label>
-                        <div
-                            id="save-status"
-                            class="studio-status"
-                            aria-live="polite"
-                        >
-                            Changes are ready to save.
-                        </div>
-                        <div class="studio-form__actions">
-                            <button
-                                class="studio-button"
-                                type="submit"
-                                value="save"
-                            >
-                                Save draft
-                            </button>
-                            <button
-                                class="studio-button studio-button--accent"
-                                type="submit"
-                                value="publish"
-                            >
-                                Publish now
-                            </button>
-                            <button
-                                class="studio-button studio-button--secondary"
-                                type="button"
-                            >
-                                Preview
-                            </button>
-                        </div>
-                    </form>
-                ) : (
+        <form
+            id="studio-editor-form"
+            class="studio-form"
+            data-editing={isEditing ? "true" : "false"}
+            data-original-slug={article.slug}
+            data-slugs={JSON.stringify(allSlugs)}
+        >
+            <!-- ==================== 1. Article details ==================== -->
+            <section class="studio-form-section">
+                <div class="studio-form-section__header">
+                    <h3>Article details</h3>
                     <p>
-                        No article was selected. Return to the article list and
-                        choose an entry to edit.
+                        Title, description, dates and taxonomies shown across
+                        the site.
                     </p>
-                )
-            }
-        </section>
+                </div>
+
+                {
+                    !isEditing && (
+                        <div class="studio-field">
+                            <label for="field-slug">
+                                Slug (URL)
+                                <span class="studio-field__required">*</span>
+                            </label>
+                            <input
+                                id="field-slug"
+                                name="slug"
+                                type="text"
+                                value={newSlugDefault}
+                                placeholder="e.g. best-password-managers-2026"
+                                autocomplete="off"
+                            />
+                            <p class="studio-hint">
+                                Used for the file name and article URL. Lowercase
+                                letters, numbers and dashes only. Auto-fills from
+                                the title.
+                            </p>
+                        </div>
+                    )
+                }
+
+                <div class="studio-field">
+                    <label for="field-title">
+                        Title
+                        <span class="studio-field__required">*</span>
+                    </label>
+                    <input
+                        id="field-title"
+                        name="title"
+                        type="text"
+                        value={article.title}
+                        placeholder="Article headline"
+                        autocomplete="off"
+                    />
+                </div>
+
+                <div class="studio-field">
+                    <label for="field-description">
+                        Description
+                        <span class="studio-field__required">*</span>
+                    </label>
+                    <textarea
+                        id="field-description"
+                        name="description"
+                        rows="3"
+                        placeholder="Short summary shown on cards, listing pages and search results."
+                    >{article.description}</textarea>
+                </div>
+
+                <div class="studio-field-row">
+                    <div class="studio-field">
+                        <label for="field-pubdate">
+                            Published date
+                            <span class="studio-field__required">*</span>
+                        </label>
+                        <input
+                            id="field-pubdate"
+                            name="pubDate"
+                            type="date"
+                            value={article.pubDate}
+                        />
+                    </div>
+                    <div class="studio-field">
+                        <label for="field-updated">
+                            Updated date
+                            <span class="studio-hint">(optional)</span>
+                        </label>
+                        <input
+                            id="field-updated"
+                            name="updatedDate"
+                            type="date"
+                            value={article.updatedDate}
+                        />
+                    </div>
+                </div>
+
+                <div class="studio-field-row">
+                    <div class="studio-field">
+                        <label for="field-author">
+                            Author
+                            <span class="studio-field__required">*</span>
+                        </label>
+                        <select id="field-author" name="author">
+                            {
+                                authorOptions.map((name) => (
+                                    <option
+                                        value={name}
+                                        selected={name === article.author}
+                                    >
+                                        {name}
+                                    </option>
+                                ))
+                            }
+                        </select>
+                    </div>
+                    <div class="studio-field">
+                        <label for="field-category">
+                            Category
+                            <span class="studio-field__required">*</span>
+                        </label>
+                        <input
+                            id="field-category"
+                            name="category"
+                            type="text"
+                            value={article.category}
+                            list="studio-categories"
+                            placeholder="e.g. Cybersecurity"
+                            autocomplete="off"
+                        />
+                        <datalist id="studio-categories">
+                            {
+                                categories.map((category) => (
+                                    <option value={category} />
+                                ))
+                            }
+                        </datalist>
+                    </div>
+                </div>
+
+                <div class="studio-field">
+                    <label for="field-tags">Tags (comma separated)</label>
+                    <input
+                        id="field-tags"
+                        name="tags"
+                        type="text"
+                        value={article.tags}
+                        placeholder="Password Managers, Security, Privacy"
+                        autocomplete="off"
+                    />
+                </div>
+
+                <div class="studio-checkbox-row">
+                    <label class="studio-checkbox">
+                        <input
+                            name="featured"
+                            type="checkbox"
+                            checked={article.featured}
+                        />
+                        <span>
+                            <strong>Featured</strong>
+                            <small>
+                                Featured articles appear in the Editor's Picks
+                                section on the homepage.
+                            </small>
+                        </span>
+                    </label>
+                    <label class="studio-checkbox">
+                        <input
+                            name="draft"
+                            type="checkbox"
+                            checked={article.draft}
+                        />
+                        <span>
+                            <strong>Draft</strong>
+                            <small>
+                                Drafts are excluded from the published site.
+                                New articles always start as drafts; "Publish
+                                now" always clears this.
+                            </small>
+                        </span>
+                    </label>
+                </div>
+            </section>
+
+            <!-- ==================== 2. Hero image ==================== -->
+            <section class="studio-form-section">
+                <div class="studio-form-section__header">
+                    <h3>Hero image</h3>
+                    <p>
+                        Upload the article's main image, then describe it — the
+                        two go together.
+                    </p>
+                </div>
+
+                <div class="studio-field">
+                    <label class="studio-field__label">Hero image</label>
+                    <div class="studio-file-input">
+                        <input
+                            id="field-heroimage"
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/gif"
+                        />
+                        <button
+                            class="studio-button studio-button--secondary studio-button--sm"
+                            type="button"
+                            id="remove-hero-image"
+                            hidden
+                        >
+                            Remove image
+                        </button>
+                    </div>
+                    <input type="hidden" name="heroImage" value={article.heroImage} />
+                    <figure class="studio-image-preview" id="hero-image-preview" hidden>
+                        <img id="hero-image-preview-img" alt="Hero image preview" />
+                        <figcaption id="hero-image-caption"></figcaption>
+                    </figure>
+                    <p class="studio-hint" id="hero-image-hint">
+                        Saved to public/images/articles/ and committed with your
+                        article.
+                    </p>
+                </div>
+
+                <div class="studio-field">
+                    <label for="field-alt">
+                        Hero image alt text
+                        <span class="studio-hint">(recommended)</span>
+                    </label>
+                    <input
+                        id="field-alt"
+                        name="featuredImageAlt"
+                        type="text"
+                        value={article.featuredImageAlt}
+                        placeholder="Describe the image for accessibility and SEO"
+                        autocomplete="off"
+                    />
+                </div>
+            </section>
+
+            <!-- ==================== 3. SEO / Meta ==================== -->
+            <section class="studio-form-section">
+                <div class="studio-form-section__header">
+                    <h3>SEO / Meta</h3>
+                    <p>
+                        Optional overrides for how this article appears in
+                        search results.
+                    </p>
+                </div>
+
+                <div class="studio-field">
+                    <label for="field-seotitle">SEO title</label>
+                    <input
+                        id="field-seotitle"
+                        name="seoTitle"
+                        type="text"
+                        value={article.seoTitle}
+                        placeholder="Overrides the title shown in search results"
+                        autocomplete="off"
+                    />
+                </div>
+
+                <div class="studio-field">
+                    <label for="field-seodesc">SEO description</label>
+                    <textarea
+                        id="field-seodesc"
+                        name="seoDescription"
+                        rows="3"
+                        placeholder="Overrides the meta description shown in search results"
+                    >{article.seoDescription}</textarea>
+                </div>
+
+                <div class="studio-field">
+                    <label for="field-canonical">Canonical URL</label>
+                    <input
+                        id="field-canonical"
+                        name="canonicalURL"
+                        type="url"
+                        value={article.canonicalURL}
+                        placeholder="https://… if different from the auto-generated URL"
+                        autocomplete="off"
+                    />
+                </div>
+            </section>
+
+            <!-- ==================== 4. Content ==================== -->
+            <section class="studio-form-section">
+                <div class="studio-form-section__header">
+                    <h3>Content</h3>
+                    <p>Markdown body — the article itself.</p>
+                </div>
+
+                <div class="studio-field">
+                    <label for="field-body">Article body</label>
+                    <textarea
+                        id="field-body"
+                        name="body"
+                        rows="20"
+                        placeholder="Write your article in Markdown…"
+                    >{article.body}</textarea>
+                </div>
+            </section>
+
+            <div class="studio-status" id="save-status" aria-live="polite">
+                {
+                    isEditing
+                        ? "Ready to save changes to this article."
+                        : "Fill in the details, then save a draft or publish."
+                }
+            </div>
+
+            <div class="studio-form__actions">
+                <button
+                    class="studio-button"
+                    type="submit"
+                    name="action"
+                    value="save"
+                    id="save-draft-btn"
+                >
+                    Save draft
+                </button>
+                <button
+                    class="studio-button studio-button--accent"
+                    type="submit"
+                    name="action"
+                    value="publish"
+                    id="publish-btn"
+                >
+                    Publish now
+                </button>
+                {
+                    previewUrl && (
+                        <a
+                            class="studio-button studio-button--secondary"
+                            href={previewUrl}
+                            target="_blank"
+                            rel="noopener"
+                        >
+                            Preview
+                        </a>
+                    )
+                }
+            </div>
+        </form>
     </StudioShell>
 </BaseLayout>
 
 <script>
+    import {
+        getStudioConfig,
+        hasStudioConfig,
+        getFile,
+        putFile,
+        slugify,
+        fileToBase64,
+        serializeArticle,
+        type ArticleData,
+    } from "../../lib/studio/github";
+
     const form = document.getElementById(
         "studio-editor-form",
     ) as HTMLFormElement | null;
-    const status = document.getElementById("save-status");
+    const status = document.getElementById("save-status") as HTMLElement | null;
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-    if (form && status) {
-        form.addEventListener("submit", (event) => {
-            event.preventDefault();
-            const submitter = event.submitter as HTMLButtonElement | null;
-            const formData = new FormData(form);
-            const isPublish = submitter?.value === "publish";
-            const slug = String(formData.get("slug") || "untitled");
+    if (!form || !status) {
+        throw new Error("Studio editor failed to initialize.");
+    }
 
-            const payload = {
-                slug,
-                title: String(formData.get("title") || ""),
-                description: String(formData.get("description") || ""),
-                category: String(formData.get("category") || ""),
-                tags: String(formData.get("tags") || "")
-                    .split(",")
-                    .map((tag) => tag.trim())
-                    .filter(Boolean),
-                draft: !isPublish && formData.get("draft") === "on",
-                featured: formData.get("featured") === "on",
-                pubDate: String(formData.get("pubDate") || ""),
-                updatedDate: String(formData.get("updatedDate") || ""),
-                body: String(formData.get("body") || ""),
-            };
+    const isEditing = form.dataset.editing === "true";
+    const originalSlug = form.dataset.originalSlug || "";
+    const allSlugs = JSON.parse(form.dataset.slugs || "[]") as string[];
 
-            status.textContent = isPublish
-                ? "Publishing your article…"
-                : "Saving your changes…";
+    const slugInput = document.getElementById(
+        "field-slug",
+    ) as HTMLInputElement | null;
+    const titleInput = document.getElementById(
+        "field-title",
+    ) as HTMLInputElement | null;
+    const heroFile = document.getElementById(
+        "field-heroimage",
+    ) as HTMLInputElement | null;
+    const heroPreview = document.getElementById(
+        "hero-image-preview",
+    ) as HTMLElement | null;
+    const heroPreviewImg = document.getElementById(
+        "hero-image-preview-img",
+    ) as HTMLImageElement | null;
+    const heroCaption = document.getElementById(
+        "hero-image-caption",
+    ) as HTMLElement | null;
+    const heroHint = document.getElementById(
+        "hero-image-hint",
+    ) as HTMLElement | null;
+    const removeHeroBtn = document.getElementById(
+        "remove-hero-image",
+    ) as HTMLButtonElement | null;
 
-            window.localStorage.setItem(
-                `studio-article-${slug}`,
-                JSON.stringify(payload),
+    let pendingImage: { base64: string; name: string } | null = null;
+    let slugEdited = Boolean(slugInput?.value);
+
+    /* ---- Slug auto-fill from title (new articles only) ---- */
+    titleInput?.addEventListener("input", () => {
+        if (isEditing || !slugInput || slugEdited) return;
+        slugInput.value = slugify(titleInput.value);
+    });
+
+    slugInput?.addEventListener("input", () => {
+        slugEdited = true;
+    });
+
+    /* ---- Show the existing hero image (edit + duplicate mode) ---- */
+    const existingHero = document.querySelector<HTMLInputElement>(
+        'input[name="heroImage"]',
+    )?.value;
+    if (existingHero) showPreview(`${base}${existingHero}`, "Current hero image");
+
+    heroFile?.addEventListener("change", () => {
+        const file = heroFile.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+            setStatus("Please choose an image file (PNG, JPG, WebP or GIF).", "error");
+            heroFile.value = "";
+            return;
+        }
+        const objectUrl = URL.createObjectURL(file);
+        showPreview(
+            objectUrl,
+            `${file.name} — will be uploaded on save`,
+        );
+        void fileToBase64(file).then((base64) => {
+            pendingImage = { base64, name: file.name };
+        });
+        removeHeroBtn?.removeAttribute("hidden");
+    });
+
+    removeHeroBtn?.addEventListener("click", () => {
+        pendingImage = null;
+        if (heroFile) heroFile.value = "";
+        const hidden = document.querySelector<HTMLInputElement>(
+            'input[name="heroImage"]',
+        );
+        if (hidden) hidden.value = "";
+        heroPreview?.setAttribute("hidden", "");
+        removeHeroBtn?.setAttribute("hidden", "");
+        if (heroHint) heroHint.textContent = "No hero image will be saved.";
+    });
+
+    function showPreview(src: string, caption: string) {
+        if (heroPreviewImg) heroPreviewImg.src = src;
+        if (heroCaption) heroCaption.textContent = caption;
+        heroPreview?.removeAttribute("hidden");
+        removeHeroBtn?.removeAttribute("hidden");
+    }
+
+    const setStatus = (
+        message: string,
+        kind: "info" | "success" | "error" = "info",
+    ) => {
+        status.className = "studio-status";
+        if (kind === "success") status.classList.add("studio-status--success");
+        if (kind === "error") status.classList.add("studio-status--error");
+        status.textContent = message;
+    };
+
+    /* ---- Save / publish ---- */
+    const saveArticle = async (action: "save" | "publish") => {
+        const config = getStudioConfig();
+        if (!config) {
+            setStatus(
+                "GitHub is not connected. Open Studio → Settings and save your GitHub token first.",
+                "error",
+            );
+            return;
+        }
+
+        const formData = new FormData(form);
+        const title = String(formData.get("title") || "").trim();
+        const description = String(formData.get("description") || "").trim();
+        const category = String(formData.get("category") || "").trim();
+        const pubDate = String(formData.get("pubDate") || "");
+        const author = String(formData.get("author") || "").trim();
+        const tags = String(formData.get("tags") || "")
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter(Boolean);
+        const featured = formData.get("featured") === "on";
+        // "Publish now" always clears draft. New articles always save as
+        // drafts; existing articles keep the draft checkbox the user set.
+        const draft = action === "publish"
+            ? false
+            : isEditing
+              ? formData.get("draft") === "on"
+              : true;
+        const draftCheckbox = form.querySelector<HTMLInputElement>(
+            'input[name="draft"]',
+        );
+        if (draftCheckbox) draftCheckbox.checked = draft;
+        const updatedDate = String(formData.get("updatedDate") || "");
+        const heroImage = String(formData.get("heroImage") || "");
+        const featuredImageAlt = String(formData.get("featuredImageAlt") || "").trim();
+        const seoTitle = String(formData.get("seoTitle") || "").trim();
+        const seoDescription = String(formData.get("seoDescription") || "").trim();
+        const canonicalURL = String(formData.get("canonicalURL") || "").trim();
+        const body = String(formData.get("body") || "");
+
+        let slug = originalSlug;
+        if (!isEditing) {
+            slug = String(formData.get("slug") || "")
+                .trim()
+                .toLowerCase();
+            if (!/^[a-z0-9-]+$/.test(slug)) {
+                setStatus(
+                    "Slug must contain only lowercase letters, numbers and dashes.",
+                    "error",
+                );
+                return;
+            }
+            if (allSlugs.includes(slug)) {
+                setStatus(
+                    `An article with the slug "${slug}" already exists. Choose a different slug.`,
+                    "error",
+                );
+                return;
+            }
+        }
+
+        const required = [
+            ["Title", title],
+            ["Description", description],
+            ["Category", category],
+            ["Published date", pubDate],
+        ] as const;
+        for (const [label, value] of required) {
+            if (!value) {
+                setStatus(`${label} is required.`, "error");
+                return;
+            }
+        }
+
+        const articleData: ArticleData = {
+            title,
+            description,
+            pubDate,
+            updatedDate: updatedDate || undefined,
+            author,
+            category,
+            tags,
+            featured,
+            draft,
+            heroImage: heroImage || undefined,
+            featuredImageAlt: featuredImageAlt || undefined,
+            seoTitle: seoTitle || undefined,
+            seoDescription: seoDescription || undefined,
+            canonicalURL: canonicalURL || undefined,
+        };
+
+        const mdPath = `src/content/articles/${slug}.md`;
+
+        setStatus(
+            action === "publish"
+                ? "Publishing — committing to GitHub…"
+                : "Saving draft — committing to GitHub…",
+        );
+
+        try {
+            /* 1. Upload a newly selected hero image */
+            if (pendingImage) {
+                setStatus("Uploading hero image…");
+                const extMatch = pendingImage.name.match(/\.([a-z0-9]+)$/i);
+                const ext = extMatch ? extMatch[1].toLowerCase() : "png";
+                const imagePath = `public/images/articles/${slug}.${ext}`;
+                const existingImage = await getFile(imagePath, {
+                    config,
+                    decode: false,
+                });
+                await putFile(
+                    imagePath,
+                    pendingImage.base64,
+                    `Studio: upload hero image for ${slug}`,
+                    {
+                        sha: existingImage?.sha,
+                        base64: true,
+                        config,
+                    },
+                );
+                articleData.heroImage = `/images/articles/${slug}.${ext}`;
+                pendingImage = null;
+            }
+
+            /* 2. Commit the article markdown */
+            const markdown = serializeArticle(articleData, body);
+            const existing = await getFile(mdPath, { config, decode: false });
+            await putFile(
+                mdPath,
+                markdown,
+                `Studio: ${action === "publish" ? "publish" : "save draft"} ${slug}`,
+                { sha: existing?.sha, config },
             );
 
-            status.textContent = isPublish
-                ? `Published article ${slug}.`
-                : `Saved article ${slug}.`;
-        });
-    }
-</script>
-
-<style>
-    .studio-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
+            const verb = action === "publish" ? "published" : "saved as a draft";
+            setStatus(
+                `✓ ${verb}. Pushed to GitHub — the live site rebuilds automatically in a few minutes.`,
+                "success",
+            );
+        } catch (err) {
+            setStatus(
+                `Save failed: ${err instanceof Error ? err.message : String(err)}`,
+                "error",
+            );
+        }
     }
 
-    .studio-eyebrow {
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        font-size: 0.72rem;
-        color: var(--color-muted);
-        margin: 0 0 0.35rem;
-    }
-
-    .studio-button {
-        border: 0;
-        background: var(--color-primary);
-        color: var(--color-on-primary);
-        border-radius: 999px;
-        padding: 0.85rem 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        min-height: 44px;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-    }
-
-    .studio-button--secondary {
-        background: var(--color-surface-alt);
-        color: var(--color-text);
-        border: 1px solid var(--color-border);
-    }
-
-    .studio-button--accent {
-        background: linear-gradient(
-            135deg,
-            var(--color-primary),
-            var(--color-accent)
+    /* Show a hint when GitHub isn't configured yet */
+    if (!hasStudioConfig()) {
+        setStatus(
+            "GitHub is not connected yet — open Studio → Settings and save your token before saving.",
+            "info",
         );
     }
 
-    .studio-panel {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-sm);
-        padding: 1.25rem;
-    }
-
-    .studio-form {
-        display: grid;
-        gap: 1rem;
-    }
-
-    .studio-form label {
-        display: grid;
-        gap: 0.4rem;
-        font-weight: 600;
-    }
-
-    .studio-form input,
-    .studio-form textarea {
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        padding: 0.8rem 0.9rem;
-        font: inherit;
-        background: var(--color-background);
-        color: var(--color-text);
-    }
-
-    .studio-form__actions {
-        display: flex;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-    }
-
-    .studio-status {
-        color: var(--color-muted);
-        font-size: 0.95rem;
-    }
-
-    @media (max-width: 760px) {
-        .studio-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-    }
-</style>
+    form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const submitter = event.submitter as HTMLButtonElement | null;
+        const action = submitter?.value === "publish" ? "publish" : "save";
+        void saveArticle(action);
+    });
+</script>

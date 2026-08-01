@@ -42,7 +42,9 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 </BaseLayout>
 
 <script>
-    const form = document.getElementById("studio-login-form");
+    const form = document.getElementById(
+        "studio-login-form",
+    ) as HTMLFormElement | null;
     const status = document.getElementById("login-status");
 
     if (form && status) {

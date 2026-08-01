@@ -1,71 +1,44 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import StudioShell from "../../components/studio/StudioShell.astro";
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 ---
 
 <BaseLayout
     title="Studio Media | The Technology Joint"
-    description="Media library placeholder for the private Studio workspace."
+    description="Media library for the private Studio workspace."
+    noindex
 >
     <StudioShell active="media">
         <header class="studio-header">
             <div>
                 <p class="studio-eyebrow">Media workspace</p>
                 <h2>Media manager</h2>
+                <p class="studio-lead">
+                    Hero images are uploaded per-article in the editor and
+                    committed to the site with each save.
+                </p>
             </div>
-            <button class="studio-button" type="button">Upload files</button>
         </header>
 
         <section class="studio-panel">
-            <h3>Coming soon</h3>
-            <p>
-                The media manager placeholder is now wired into the Studio
-                navigation so the workspace feels more complete while the full
-                asset library is being built.
+            <div class="studio-panel__header">
+                <h3>Getting started</h3>
+            </div>
+            <p class="studio-lead">
+                Open any article in the editor, choose your image in the
+                <strong>Hero image</strong> section, and it will be uploaded
+                to <code>public/images/articles/</code> when you save or
+                publish. A full asset library is planned for a future update.
             </p>
+            <div class="studio-form__actions" style="margin-top: 1rem">
+                <a
+                    class="studio-button"
+                    href={`${base}/studio/editor`}
+                    >Open the editor</a
+                >
+            </div>
         </section>
     </StudioShell>
 </BaseLayout>
-
-<style>
-    .studio-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .studio-eyebrow {
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        font-size: 0.72rem;
-        color: var(--color-muted);
-        margin: 0 0 0.35rem;
-    }
-
-    .studio-button {
-        border: 0;
-        background: var(--color-primary);
-        color: var(--color-on-primary);
-        border-radius: 999px;
-        padding: 0.85rem 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        min-height: 44px;
-    }
-
-    .studio-panel {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-sm);
-        padding: 1.25rem;
-    }
-
-    @media (max-width: 760px) {
-        .studio-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-    }
-</style>

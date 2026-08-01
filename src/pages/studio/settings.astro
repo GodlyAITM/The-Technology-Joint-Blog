@@ -6,26 +6,118 @@ import StudioShell from "../../components/studio/StudioShell.astro";
 <BaseLayout
     title="Studio Settings | The Technology Joint"
     description="Configure Studio defaults and publishing preferences."
+    noindex
 >
     <StudioShell active="settings">
         <header class="studio-header">
             <div>
                 <p class="studio-eyebrow">Workspace defaults</p>
                 <h2>Studio settings</h2>
+                <p class="studio-lead">
+                    Connect the studio to GitHub so saves and publishes reach
+                    the live site.
+                </p>
             </div>
         </header>
 
-        <section class="studio-grid">
+        <section class="studio-grid studio-grid--settings">
             <article class="studio-panel">
-                <h3>Brand defaults</h3>
-                <p>
+                <div class="studio-panel__header">
+                    <h3>GitHub connection</h3>
+                </div>
+                <form id="github-settings-form" class="studio-form">
+                    <div class="studio-field">
+                        <label for="gh-token">
+                            Personal access token
+                            <span class="studio-field__required">*</span>
+                        </label>
+                        <input
+                            id="gh-token"
+                            name="token"
+                            type="password"
+                            autocomplete="off"
+                            placeholder="github_pat_…"
+                        />
+                        <p class="studio-hint">
+                            Create a fine-grained token with{" "}
+                            <strong>Contents: Read and write</strong> and{" "}
+                            <strong>Workflows: Read and write</strong> on this
+                            repo. Workflows permission lets the push trigger
+                            the site's auto-rebuild. The token is stored in
+                            this browser only, so re-enter it on each device
+                            you publish from.
+                        </p>
+                    </div>
+
+                    <div class="studio-field-row">
+                        <div class="studio-field">
+                            <label for="gh-owner">Owner</label>
+                            <input
+                                id="gh-owner"
+                                name="owner"
+                                type="text"
+                                placeholder="godlyaitm"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="studio-field">
+                            <label for="gh-repo">Repository</label>
+                            <input
+                                id="gh-repo"
+                                name="repo"
+                                type="text"
+                                placeholder="the-technology-joint-blog"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="studio-field">
+                            <label for="gh-branch">Branch</label>
+                            <input
+                                id="gh-branch"
+                                name="branch"
+                                type="text"
+                                placeholder="main"
+                                autocomplete="off"
+                            />
+                        </div>
+                    </div>
+
+                    <div
+                        class="studio-status"
+                        id="github-status"
+                        aria-live="polite"
+                    ></div>
+
+                    <div class="studio-form__actions">
+                        <button class="studio-button" type="submit">
+                            Save connection
+                        </button>
+                        <button
+                            class="studio-button studio-button--secondary"
+                            type="button"
+                            id="test-connection"
+                        >
+                            Test connection
+                        </button>
+                    </div>
+                </form>
+            </article>
+
+            <article class="studio-panel">
+                <div class="studio-panel__header">
+                    <h3>Brand defaults</h3>
+                </div>
+                <p class="studio-lead">
                     Set preferred tone, author signature, and default category
                     templates.
                 </p>
             </article>
+
             <article class="studio-panel">
-                <h3>SEO defaults</h3>
-                <p>
+                <div class="studio-panel__header">
+                    <h3>SEO defaults</h3>
+                </div>
+                <p class="studio-lead">
                     Configure meta templates, focus keywords, and internal link
                     suggestions.
                 </p>
@@ -34,44 +126,99 @@ import StudioShell from "../../components/studio/StudioShell.astro";
     </StudioShell>
 </BaseLayout>
 
-<style>
-    .studio-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
+<script>
+    import {
+        getStudioConfig,
+        saveStudioConfig,
+        testGitHubConnection,
+        DEFAULT_OWNER,
+        DEFAULT_REPO,
+        DEFAULT_BRANCH,
+    } from "../../lib/studio/github";
+
+    const form = document.getElementById(
+        "github-settings-form",
+    ) as HTMLFormElement | null;
+    const status = document.getElementById(
+        "github-status",
+    ) as HTMLElement | null;
+    const testBtn = document.getElementById(
+        "test-connection",
+    ) as HTMLButtonElement | null;
+
+    if (!form || !status) {
+        throw new Error("Studio settings failed to initialize.");
     }
 
-    .studio-eyebrow {
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        font-size: 0.72rem;
-        color: var(--color-muted);
-        margin: 0 0 0.35rem;
+    const tokenInput = form.elements.namedItem("token") as HTMLInputElement;
+    const ownerInput = form.elements.namedItem("owner") as HTMLInputElement;
+    const repoInput = form.elements.namedItem("repo") as HTMLInputElement;
+    const branchInput = form.elements.namedItem("branch") as HTMLInputElement;
+
+    const setStatus = (
+        message: string,
+        kind: "info" | "success" | "error",
+    ) => {
+        status.className = "studio-status";
+        if (kind === "success") status.classList.add("studio-status--success");
+        if (kind === "error") status.classList.add("studio-status--error");
+        status.textContent = message;
+    };
+
+    function readConfig() {
+        return {
+            token: tokenInput.value.trim(),
+            owner: ownerInput.value.trim() || DEFAULT_OWNER,
+            repo: repoInput.value.trim() || DEFAULT_REPO,
+            branch: branchInput.value.trim() || DEFAULT_BRANCH,
+        };
     }
 
-    .studio-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 1rem;
+    /* Pre-fill from stored config */
+    const stored = getStudioConfig();
+    if (stored) {
+        tokenInput.value = stored.token;
+        ownerInput.value = stored.owner;
+        repoInput.value = stored.repo;
+        branchInput.value = stored.branch;
+        setStatus(
+            "Connected — token saved for this device.",
+            "success",
+        );
+    } else {
+        ownerInput.value = DEFAULT_OWNER;
+        repoInput.value = DEFAULT_REPO;
+        branchInput.value = DEFAULT_BRANCH;
+        setStatus(
+            "Not connected yet. Add a personal access token and save.",
+            "info",
+        );
     }
 
-    .studio-panel {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-sm);
-        padding: 1.25rem;
-    }
-
-    @media (max-width: 760px) {
-        .studio-grid {
-            grid-template-columns: 1fr;
+    form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const config = readConfig();
+        if (!config.token) {
+            setStatus("A personal access token is required.", "error");
+            return;
         }
+        saveStudioConfig(config);
+        setStatus(
+            "Saved for this device. The editor can now commit articles to GitHub.",
+            "success",
+        );
+    });
 
-        .studio-header {
-            flex-direction: column;
-            align-items: flex-start;
+    testBtn?.addEventListener("click", async () => {
+        const config = readConfig();
+        if (!config.token) {
+            setStatus("Enter a token before testing.", "error");
+            return;
         }
-    }
-</style>
+        testBtn.disabled = true;
+        setStatus("Testing connection…", "info");
+        const result = await testGitHubConnection(config);
+        setStatus(result.message, result.ok ? "success" : "error");
+        testBtn.disabled = false;
+    });
+</script>

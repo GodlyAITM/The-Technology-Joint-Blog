@@ -8,7 +8,9 @@ const posts = (await getCollection("articles"))
     .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
     .map((post) => ({
         title: post.data.title,
-        status: post.data.draft ? "Draft" : "Published",
+        category: post.data.category,
+        status: post.data.draft ? "draft" : "published",
+        featured: post.data.featured,
         updated:
             post.data.updatedDate?.toLocaleDateString("en-US", {
                 month: "short",
@@ -22,137 +24,114 @@ const posts = (await getCollection("articles"))
             }),
         slug: post.id,
     }));
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 ---
 
 <BaseLayout
     title="Studio Articles | The Technology Joint"
     description="Manage stories from the private Studio workspace."
+    noindex
 >
     <StudioShell active="articles">
         <header class="studio-header">
             <div>
                 <p class="studio-eyebrow">Content operations</p>
                 <h2>Article manager</h2>
+                <p class="studio-lead">
+                    Browse, edit and duplicate existing stories — or start a
+                    new one.
+                </p>
             </div>
-            <button class="studio-button" type="button">New article</button>
+            <a class="studio-button" href={`${base}/studio/editor`}
+                >New article</a
+            >
         </header>
 
         <section class="studio-panel">
             <div class="studio-panel__header">
-                <h3>Drafts and published content</h3>
-                <a href={`${import.meta.env.BASE_URL}studio`}>Open dashboard</a>
+                <h3>All articles ({posts.length})</h3>
             </div>
-            <table class="studio-table">
-                <thead>
-                    <tr>
-                        <th>Title</th>
-                        <th>Status</th>
-                        <th>Updated</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {
-                        posts.map((post) => (
+
+            {
+                posts.length > 0 ? (
+                    <table class="studio-table">
+                        <thead>
                             <tr>
-                                <td>{post.title}</td>
-                                <td>{post.status}</td>
-                                <td>{post.updated}</td>
-                                <td>
-                                    <a
-                                        class="studio-link"
-                                        href={`${import.meta.env.BASE_URL}studio/editor?slug=${post.slug}`}
-                                    >
-                                        Edit
-                                    </a>
-                                    <button class="studio-link" type="button">
-                                        Duplicate
-                                    </button>
-                                </td>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Status</th>
+                                <th>Updated</th>
+                                <th>Actions</th>
                             </tr>
-                        ))
-                    }
-                </tbody>
-            </table>
+                        </thead>
+                        <tbody>
+                            {
+                                posts.map((post) => (
+                                    <tr>
+                                        <td>
+                                            <div class="studio-table__title">
+                                                {post.title}
+                                            </div>
+                                        </td>
+                                        <td data-label="Category">
+                                            {post.category}
+                                        </td>
+                                        <td data-label="Status">
+                                            <span
+                                                class:list={[
+                                                    "studio-badge",
+                                                    post.status === "draft"
+                                                        ? "studio-badge--draft"
+                                                        : "studio-badge--published",
+                                                ]}
+                                            >
+                                                {post.status === "draft"
+                                                    ? "Draft"
+                                                    : "Published"}
+                                            </span>
+                                            {
+                                                post.featured && (
+                                                    <span
+                                                        class="studio-badge studio-badge--featured"
+                                                        title="Featured in Editor's Picks"
+                                                    >
+                                                        Featured
+                                                    </span>
+                                                )
+                                            }
+                                        </td>
+                                        <td data-label="Updated">
+                                            {post.updated}
+                                        </td>
+                                        <td data-label="Actions">
+                                            <div class="studio-table__actions">
+                                                <a
+                                                    class="studio-link"
+                                                    href={`${base}/studio/editor?slug=${post.slug}`}
+                                                >
+                                                    Edit
+                                                </a>
+                                                <a
+                                                    class="studio-link"
+                                                    href={`${base}/studio/editor?slug=${post.slug}&duplicate=1`}
+                                                >
+                                                    Duplicate
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            }
+                        </tbody>
+                    </table>
+                ) : (
+                    <p class="studio-lead">
+                        No articles yet. Create your first article to get
+                        started.
+                    </p>
+                )
+            }
         </section>
     </StudioShell>
 </BaseLayout>
-
-<style>
-    .studio-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .studio-eyebrow {
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        font-size: 0.72rem;
-        color: var(--color-muted);
-        margin: 0 0 0.35rem;
-    }
-
-    .studio-button {
-        border: 0;
-        background: var(--color-primary);
-        color: var(--color-on-primary);
-        border-radius: 999px;
-        padding: 0.85rem 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        min-height: 44px;
-    }
-
-    .studio-panel {
-        background: var(--color-surface);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-sm);
-        padding: 1.25rem;
-    }
-
-    .studio-panel__header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-    }
-
-    .studio-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .studio-table th,
-    .studio-table td {
-        text-align: left;
-        padding: 0.8rem 0;
-        border-bottom: 1px solid var(--color-border);
-    }
-
-    .studio-link {
-        border: 0;
-        background: transparent;
-        color: var(--color-primary);
-        padding: 0.35rem 0;
-        margin-right: 0.8rem;
-        cursor: pointer;
-        min-height: 44px;
-    }
-
-    @media (max-width: 760px) {
-        .studio-header,
-        .studio-panel__header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .studio-table {
-            display: block;
-            overflow-x: auto;
-            white-space: nowrap;
-        }
-    }
-</style>
