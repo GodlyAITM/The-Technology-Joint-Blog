@@ -18,7 +18,7 @@ export const SITE = {
         import.meta.env.PUBLIC_SITE_URL?.trim() ||
         "http://localhost:4321",
 
-    logo: `${import.meta.env.BASE_URL}images/logo.png`,
+    logo: `${import.meta.env.BASE_URL}images/logo.jpg`,
 
     defaultHero: "/images/default-hero.jpg",
 

@@ -12,27 +12,25 @@ const featuredArticles = (
 ).sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
 ---
 
-<section class="featured">
-    <div class="container">
-        <SectionHeading
-            eyebrow="Editor's Picks"
-            title="Featured Articles"
-            description="Our best technology guides, editorials and practical resources."
-        />
+{
+    featuredArticles.length > 0 && (
+        <section class="featured">
+            <div class="container">
+                <SectionHeading
+                    eyebrow="Editor's Picks"
+                    title="Featured Articles"
+                    description="Our best technology guides, editorials and practical resources."
+                />
 
-        {
-            featuredArticles.length > 0 ? (
                 <div class="grid">
                     {featuredArticles.map((article) => (
                         <ArticleCard article={article} />
                     ))}
                 </div>
-            ) : (
-                <p class="empty">No featured articles yet.</p>
-            )
-        }
-    </div>
-</section>
+            </div>
+        </section>
+    )
+}
 
 <style>
     .featured {
@@ -42,16 +40,24 @@ const featuredArticles = (
     .grid {
         display: grid;
 
-        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        grid-template-columns: repeat(3, 1fr);
 
         gap: 2rem;
+
+        align-items: stretch;
     }
 
-    .empty {
-        opacity: 0.7;
-
-        text-align: center;
-
-        padding: 2rem 0;
+    @media (max-width: 1024px) {
+        .grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
+
+    @media (max-width: 640px) {
+        .grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+
 </style>

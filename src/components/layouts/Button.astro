@@ -33,7 +33,7 @@ const { href = "#", variant = "primary" } = Astro.props;
     .primary {
         background: var(--color-primary);
 
-        color: white;
+        color: var(--color-on-primary);
     }
 
     .primary:hover {
@@ -49,6 +49,6 @@ const { href = "#", variant = "primary" } = Astro.props;
     }
 
     .secondary:hover {
-        background: #f8fafc;
+        background: var(--color-surface-alt);
     }
 </style>

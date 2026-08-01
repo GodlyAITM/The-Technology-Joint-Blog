@@ -172,9 +172,9 @@ const pageDescription = buildMetaDescription(
 
         border-radius: 999px;
 
-        background: #dbeafe;
+        background: var(--color-primary-soft);
 
-        color: #2563eb;
+        color: var(--color-primary);
 
         font-size: 0.85rem;
 
@@ -316,7 +316,7 @@ const pageDescription = buildMetaDescription(
 
         border-radius: 12px;
 
-        background: #f8fafc;
+        background: var(--color-surface-alt);
 
         font-style: italic;
     }
@@ -330,7 +330,7 @@ const pageDescription = buildMetaDescription(
 
         border: none;
 
-        border-top: 1px solid #e5e7eb;
+        border-top: 1px solid var(--color-border);
     }
 
     .prose code {
@@ -338,7 +338,9 @@ const pageDescription = buildMetaDescription(
 
         border-radius: 6px;
 
-        background: #eef2ff;
+        background: var(--code-inline-bg);
+
+        color: var(--code-inline-text);
 
         font-size: 0.92em;
 
@@ -372,13 +374,13 @@ const pageDescription = buildMetaDescription(
     }
 
     .prose thead {
-        background: #f8fafc;
+        background: var(--color-surface-alt);
     }
 
     .prose th {
         padding: 1rem;
 
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--color-border);
 
         text-align: left;
 
@@ -388,7 +390,7 @@ const pageDescription = buildMetaDescription(
     .prose td {
         padding: 1rem;
 
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--color-border);
     }
 
     .prose iframe {

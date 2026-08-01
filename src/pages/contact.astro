@@ -161,6 +161,15 @@ import { site } from "../data/site";
         border-radius: 12px;
 
         font: inherit;
+
+        background: var(--color-surface);
+
+        color: var(--color-text);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--color-muted);
     }
 
     input:focus,
@@ -179,7 +188,7 @@ import { site } from "../data/site";
 
         background: var(--color-primary);
 
-        color: white;
+        color: var(--color-on-primary);
 
         font-weight: 700;
 

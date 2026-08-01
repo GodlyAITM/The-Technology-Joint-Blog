@@ -13,7 +13,7 @@ tags:
   - Consumer Tech
 featured: false
 draft: false
-heroImage: "/images/articles/why-your-phone-battery-drains-faster-in-2026.jpg"
+heroImage: "/images/articles/why-your-phone-battery-drains-faster-in-2026.png"
 featuredImageAlt: "Smartphone displaying a low battery warning on a desk"
 seoTitle: "Why Your Phone Battery Drains Faster in 2026 (And How to Fix It)"
 seoDescription: "Phone battery draining faster than usual? Here's what changed in 2026 — background AI features, charging habits, and connectivity settings — and the step-by-step fixes that actually work."

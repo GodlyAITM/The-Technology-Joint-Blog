@@ -17,16 +17,24 @@ export function getCanonicalUrl(options: SEOOptions = {}): string {
     ).toString();
 }
 
-export function getImageUrl(image?: string): string {
+export function getImageUrl(image?: string): string | undefined {
+    if (!image) {
+        return undefined;
+    }
+
     const base = SITE.url.replace(/\/$/, "");
 
-    const path = (image ?? SITE.defaultHero).replace(/^\//, "");
+    const path = image.replace(/^\//, "");
 
     return `${base}/${path}`;
 }
 
-export function getLocalImageUrl(image?: string): string {
-    const path = (image ?? SITE.defaultHero).replace(/^\//, "");
+export function getLocalImageUrl(image?: string): string | undefined {
+    if (!image) {
+        return undefined;
+    }
+
+    const path = image.replace(/^\//, "");
 
     return `${import.meta.env.BASE_URL}${path}`;
 }
