@@ -38,7 +38,7 @@ const STORAGE_KEY = "studio-github-config";
 const API = "https://api.github.com";
 
 export const DEFAULT_OWNER = "godlyaitm";
-export const DEFAULT_REPO = "the-technology-joint-blog";
+export const DEFAULT_REPO = "The-Technology-Joint-Blog";
 export const DEFAULT_BRANCH = "main";
 
 /* ------------------------------------------------------------------ */
