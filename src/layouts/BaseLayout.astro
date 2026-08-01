@@ -71,10 +71,7 @@ const websiteSchema = {
                           ? "dark"
                           : "light";
 
-                    document.documentElement.setAttribute(
-                        "data-theme",
-                        theme,
-                    );
+                    document.documentElement.setAttribute("data-theme", theme);
                 } catch (e) {
                     // Ignore theme initialization errors.
                 }
@@ -83,105 +80,50 @@ const websiteSchema = {
 
         <meta charset="UTF-8" />
 
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1"
-        />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
 
         <title>{title}</title>
 
-        <meta
-            name="description"
-            content={description}
-        />
+        <meta name="description" content={description} />
 
-        <meta
-            name="author"
-            content={SITE.author}
-        />
+        <meta name="author" content={SITE.author} />
 
-        <meta
-            name="theme-color"
-            content="#2563EB"
-        />
+        <meta name="theme-color" content="#2563EB" />
 
         <meta
             name="robots"
-            content={
-                noindex
-                    ? "noindex,nofollow"
-                    : "index,follow"
-            }
+            content={noindex ? "noindex,nofollow" : "index,follow"}
         />
 
-        <link
-            rel="canonical"
-            href={canonicalUrl}
-        />
+        <link rel="canonical" href={canonicalUrl} />
 
-        <link
-            rel="icon"
-            href={faviconUrl}
-        />
+        <link rel="icon" href={faviconUrl} />
 
         <!-- Open Graph -->
 
-        <meta
-            property="og:type"
-            content="website"
-        />
+        <meta property="og:type" content="website" />
 
-        <meta
-            property="og:site_name"
-            content={SITE.name}
-        />
+        <meta property="og:site_name" content={SITE.name} />
 
-        <meta
-            property="og:title"
-            content={title}
-        />
+        <meta property="og:title" content={title} />
 
-        <meta
-            property="og:description"
-            content={description}
-        />
+        <meta property="og:description" content={description} />
 
-        <meta
-            property="og:url"
-            content={canonicalUrl}
-        />
+        <meta property="og:url" content={canonicalUrl} />
 
-        <meta
-            property="og:image"
-            content={imageUrl}
-        />
+        <meta property="og:image" content={imageUrl} />
 
-        <meta
-            property="og:locale"
-            content="en_US"
-        />
+        <meta property="og:locale" content="en_US" />
 
         <!-- Twitter -->
 
-        <meta
-            name="twitter:card"
-            content="summary_large_image"
-        />
+        <meta name="twitter:card" content="summary_large_image" />
 
-        <meta
-            name="twitter:title"
-            content={title}
-        />
+        <meta name="twitter:title" content={title} />
 
-        <meta
-            name="twitter:description"
-            content={description}
-        />
+        <meta name="twitter:description" content={description} />
 
-        <meta
-            name="twitter:image"
-            content={imageUrl}
-        />
+        <meta name="twitter:image" content={imageUrl} />
 
         <!-- JSON-LD -->
 
@@ -203,49 +145,56 @@ const websiteSchema = {
 
         <script is:inline>
             (function () {
+                const path = window.location.pathname;
+                const isStudioRoute = path.startsWith("/studio");
+                const isLoginRoute = path === "/studio/login";
+                const isAuthenticated =
+                    window.localStorage.getItem("studio-auth") ===
+                    "authenticated";
+
+                if (isStudioRoute && !isLoginRoute && !isAuthenticated) {
+                    window.location.replace("/studio/login");
+                    return;
+                }
+
+                if (isLoginRoute && isAuthenticated) {
+                    window.location.replace("/studio");
+                    return;
+                }
+            })();
+        </script>
+
+        <script is:inline>
+            (function () {
                 function initThemeToggle() {
-                    const btn =
-                        document.getElementById("theme-toggle");
+                    const btn = document.getElementById("theme-toggle");
 
                     if (!btn) return;
 
-                    btn.addEventListener(
-                        "click",
-                        function () {
-                            const current =
-                                document.documentElement
-                                    .getAttribute(
-                                        "data-theme",
-                                    ) === "dark"
-                                    ? "dark"
-                                    : "light";
-
-                            const next =
-                                current === "dark"
-                                    ? "light"
-                                    : "dark";
-
-                            document.documentElement.setAttribute(
+                    btn.addEventListener("click", function () {
+                        const current =
+                            document.documentElement.getAttribute(
                                 "data-theme",
-                                next,
-                            );
+                            ) === "dark"
+                                ? "dark"
+                                : "light";
 
-                            try {
-                                localStorage.setItem(
-                                    "theme",
-                                    next,
-                                );
-                            } catch (e) {
-                                // Ignore storage errors.
-                            }
-                        },
-                    );
+                        const next = current === "dark" ? "light" : "dark";
+
+                        document.documentElement.setAttribute(
+                            "data-theme",
+                            next,
+                        );
+
+                        try {
+                            localStorage.setItem("theme", next);
+                        } catch (e) {
+                            // Ignore storage errors.
+                        }
+                    });
                 }
 
-                if (
-                    document.readyState ===
-                    "loading"
-                ) {
+                if (document.readyState === "loading") {
                     document.addEventListener(
                         "DOMContentLoaded",
                         initThemeToggle,

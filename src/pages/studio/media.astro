@@ -1,0 +1,71 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import StudioShell from "../../components/studio/StudioShell.astro";
+---
+
+<BaseLayout
+    title="Studio Media | The Technology Joint"
+    description="Media library placeholder for the private Studio workspace."
+>
+    <StudioShell active="media">
+        <header class="studio-header">
+            <div>
+                <p class="studio-eyebrow">Media workspace</p>
+                <h2>Media manager</h2>
+            </div>
+            <button class="studio-button" type="button">Upload files</button>
+        </header>
+
+        <section class="studio-panel">
+            <h3>Coming soon</h3>
+            <p>
+                The media manager placeholder is now wired into the Studio
+                navigation so the workspace feels more complete while the full
+                asset library is being built.
+            </p>
+        </section>
+    </StudioShell>
+</BaseLayout>
+
+<style>
+    .studio-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .studio-eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 0.72rem;
+        color: var(--color-muted);
+        margin: 0 0 0.35rem;
+    }
+
+    .studio-button {
+        border: 0;
+        background: var(--color-primary);
+        color: var(--color-on-primary);
+        border-radius: 999px;
+        padding: 0.85rem 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        min-height: 44px;
+    }
+
+    .studio-panel {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        padding: 1.25rem;
+    }
+
+    @media (max-width: 760px) {
+        .studio-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>

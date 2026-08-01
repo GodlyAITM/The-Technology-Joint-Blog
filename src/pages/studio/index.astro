@@ -1,0 +1,364 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const posts = await getCollection("articles");
+const publishedCount = posts.filter((post) => !post.data.draft).length;
+const draftCount = posts.filter((post) => post.data.draft).length;
+const recentPosts = posts
+    .slice()
+    .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
+    .slice(0, 4)
+    .map((post) => ({
+        title: post.data.title,
+        status: post.data.draft ? "Draft" : "Published",
+        updated:
+            post.data.updatedDate?.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+            }) ||
+            post.data.pubDate.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+            }),
+        slug: post.id,
+    }));
+---
+
+<BaseLayout
+    title="Studio | The Technology Joint"
+    description="Private publishing workspace for The Technology Joint."
+>
+    <div class="studio-shell">
+        <aside class="studio-sidebar" aria-label="Studio navigation">
+            <div class="studio-brand">
+                <div class="studio-brand__mark">TJ</div>
+                <div>
+                    <p class="studio-brand__eyebrow">Private Studio</p>
+                    <h1>The Technology Joint</h1>
+                </div>
+            </div>
+
+            <nav class="studio-nav">
+                <a class="active" href="/studio">Dashboard</a>
+                <a href="/studio/articles">Articles</a>
+                <a href="/studio/editor">Editor</a>
+                <a href="/studio/settings">Settings</a>
+            </nav>
+
+            <div class="studio-card">
+                <p class="studio-card__eyebrow">Current role</p>
+                <strong>Writer</strong>
+                <p>Secure workspace for drafting and reviewing content.</p>
+            </div>
+        </aside>
+
+        <main class="studio-main">
+            <header class="studio-header">
+                <div>
+                    <p class="studio-card__eyebrow">Studio overview</p>
+                    <h2>Publishing workspace</h2>
+                    <p class="studio-lead">
+                        Review status, ship updates, and keep your editorial
+                        calendar moving with a calmer workspace.
+                    </p>
+                </div>
+                <a class="studio-button" href="/studio/editor">New article</a>
+            </header>
+
+            <section class="studio-hero">
+                <article class="studio-hero__card">
+                    <p class="studio-card__eyebrow">Ready to publish</p>
+                    <h3>Keep the next article moving with one click.</h3>
+                    <p>
+                        Use the dashboard to review recent posts, open the
+                        editor, or jump straight to the media placeholder.
+                    </p>
+                </article>
+                <div class="studio-hero__actions">
+                    <a class="studio-button" href="/studio/articles"
+                        >Manage articles</a
+                    >
+                    <a
+                        class="studio-button studio-button--secondary"
+                        href="/studio/media">Open media</a
+                    >
+                </div>
+            </section>
+
+            <section class="studio-metrics" aria-label="Studio metrics">
+                <article class="studio-metric">
+                    <p class="studio-metric__label">Published</p>
+                    <strong>{publishedCount}</strong>
+                </article>
+                <article class="studio-metric">
+                    <p class="studio-metric__label">Drafts</p>
+                    <strong>{draftCount}</strong>
+                </article>
+                <article class="studio-metric">
+                    <p class="studio-metric__label">Articles</p>
+                    <strong>{posts.length}</strong>
+                </article>
+                <article class="studio-metric">
+                    <p class="studio-metric__label">Recent</p>
+                    <strong>{recentPosts.length}</strong>
+                </article>
+            </section>
+
+            <section class="studio-grid">
+                <article class="studio-panel">
+                    <div class="studio-panel__header">
+                        <h3>Recent activity</h3>
+                        <a href="/studio">View all</a>
+                    </div>
+                    <ul class="studio-list">
+                        {
+                            recentPosts.map((post) => (
+                                <li>
+                                    <div>
+                                        <strong>{post.title}</strong>
+                                        <p>{post.status}</p>
+                                    </div>
+                                    <span>
+                                        <a
+                                            href={`/studio/editor?slug=${post.slug}`}
+                                        >
+                                            {post.updated}
+                                        </a>
+                                    </span>
+                                </li>
+                            ))
+                        }
+                    </ul>
+                </article>
+
+                <article class="studio-panel">
+                    <div class="studio-panel__header">
+                        <h3>Quick actions</h3>
+                    </div>
+                    <div class="studio-actions">
+                        <button
+                            class="studio-button studio-button--secondary"
+                            type="button">Import article</button
+                        >
+                        <a
+                            class="studio-button studio-button--secondary"
+                            href="/studio/media"
+                        >
+                            Upload media
+                        </a>
+                        <button
+                            class="studio-button studio-button--secondary"
+                            type="button">Open SEO guide</button
+                        >
+                    </div>
+                </article>
+            </section>
+        </main>
+    </div>
+</BaseLayout>
+
+<style>
+    .studio-shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr);
+        background: var(--color-background);
+        color: var(--color-text);
+    }
+
+    .studio-sidebar {
+        padding: 2rem 1.25rem;
+        border-right: 1px solid var(--color-border);
+        background: color-mix(
+            in srgb,
+            var(--color-surface) 92%,
+            var(--color-background)
+        );
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .studio-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+    }
+
+    .studio-brand__mark {
+        display: inline-grid;
+        place-items: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 999px;
+        background: linear-gradient(
+            135deg,
+            var(--color-primary),
+            var(--color-accent)
+        );
+        color: white;
+        font-weight: 700;
+    }
+
+    .studio-brand__eyebrow,
+    .studio-card__eyebrow,
+    .studio-metric__label {
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 0.72rem;
+        color: var(--color-muted);
+        margin: 0 0 0.35rem;
+    }
+
+    .studio-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .studio-nav a {
+        color: var(--color-text);
+        padding: 0.75rem 0.9rem;
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        transition:
+            background var(--transition),
+            color var(--transition);
+    }
+
+    .studio-nav a.active,
+    .studio-nav a:hover {
+        background: var(--color-primary-soft);
+        color: var(--color-primary-dark);
+    }
+
+    .studio-card,
+    .studio-panel,
+    .studio-metric {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .studio-card {
+        padding: 1rem;
+    }
+
+    .studio-main {
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .studio-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .studio-button {
+        border: 0;
+        background: var(--color-primary);
+        color: var(--color-on-primary);
+        border-radius: 999px;
+        padding: 0.85rem 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        min-height: 44px;
+    }
+
+    .studio-button--secondary {
+        background: var(--color-surface-alt);
+        color: var(--color-text);
+        border: 1px solid var(--color-border);
+    }
+
+    .studio-metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .studio-metric {
+        padding: 1rem 1.1rem;
+    }
+
+    .studio-metric strong {
+        font-size: 1.5rem;
+    }
+
+    .studio-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 1rem;
+    }
+
+    .studio-panel {
+        padding: 1.2rem;
+    }
+
+    .studio-panel__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .studio-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+
+    .studio-list li {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        border-bottom: 1px solid var(--color-border);
+        padding-bottom: 0.8rem;
+    }
+
+    .studio-list p {
+        margin: 0.25rem 0 0;
+        color: var(--color-muted);
+    }
+
+    .studio-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    @media (max-width: 960px) {
+        .studio-shell {
+            grid-template-columns: 1fr;
+        }
+
+        .studio-sidebar {
+            border-right: 0;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .studio-grid,
+        .studio-metrics {
+            grid-template-columns: 1fr;
+        }
+
+        .studio-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .studio-list li {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>

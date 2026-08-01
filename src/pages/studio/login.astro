@@ -1,0 +1,133 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+    title="Studio Login | The Technology Joint"
+    description="Access the private Studio workspace."
+>
+    <section class="login-shell">
+        <div class="login-card">
+            <p class="studio-eyebrow">Private access</p>
+            <h1>Welcome to the Studio</h1>
+            <p>
+                Use the studio credentials below to enter the private workspace.
+            </p>
+            <form id="studio-login-form" class="login-form">
+                <label>
+                    <span>Email</span>
+                    <input
+                        type="email"
+                        name="email"
+                        value="alabi43israel@gmail.com"
+                        required
+                    />
+                </label>
+                <label>
+                    <span>Password</span>
+                    <input
+                        type="password"
+                        name="password"
+                        value="god88illary"
+                        required
+                    />
+                </label>
+                <div id="login-status" class="login-status">
+                    Use the studio credentials to continue.
+                </div>
+                <button type="submit">Enter Studio</button>
+            </form>
+        </div>
+    </section>
+</BaseLayout>
+
+<script>
+    const form = document.getElementById("studio-login-form");
+    const status = document.getElementById("login-status");
+
+    if (form && status) {
+        form.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const formData = new FormData(form);
+            const email = String(formData.get("email") || "");
+            const password = String(formData.get("password") || "");
+
+            if (
+                email === "alabi43israel@gmail.com" &&
+                password === "god88illary"
+            ) {
+                window.localStorage.setItem("studio-auth", "authenticated");
+                window.location.assign("/studio");
+            } else {
+                status.textContent = "The email or password is incorrect.";
+            }
+        });
+    }
+</script>
+
+<style>
+    .login-shell {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 2rem;
+        background: linear-gradient(
+            135deg,
+            var(--color-background),
+            var(--color-surface)
+        );
+    }
+
+    .login-card {
+        width: min(100%, 480px);
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: 2rem;
+        box-shadow: var(--shadow-md);
+    }
+
+    .studio-eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 0.72rem;
+        color: var(--color-muted);
+        margin: 0 0 0.35rem;
+    }
+
+    .login-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-top: 1.25rem;
+    }
+
+    .login-form label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+        font-weight: 600;
+    }
+
+    .login-form input {
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: 0.8rem 0.9rem;
+        font: inherit;
+    }
+
+    .login-form button {
+        border: 0;
+        border-radius: var(--radius-md);
+        background: var(--color-primary);
+        color: white;
+        padding: 0.9rem 1rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .login-status {
+        color: var(--color-muted);
+        font-size: 0.95rem;
+    }
+</style>

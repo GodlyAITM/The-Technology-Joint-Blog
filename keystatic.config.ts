@@ -20,12 +20,11 @@ export default config({
             path: "src/content/articles/*",
 
             // Write the markdown body below the frontmatter, exactly like the
-            // existing .md files in src/content/articles/. The explicit extension
-            // is required — without it Keystatic defaults to .mdoc, which the
-            // site's content collection (pattern "**/*.{md,mdx}") never loads.
+            // existing .md files in src/content/articles/. Keystatic 0.6.x uses
+            // the contentField option to map the document body into the markdown
+            // field expected by the Astro content collection.
             format: {
                 contentField: "content",
-                extension: "md",
             },
 
             schema: {
@@ -137,9 +136,6 @@ export default config({
                     dividers: true,
                     links: true,
                     tables: true,
-                    // Read/write standard Markdown (the existing .md files use plain
-                    // markdown, not Markdoc).
-                    output: "markdown",
                 }),
             },
         }),

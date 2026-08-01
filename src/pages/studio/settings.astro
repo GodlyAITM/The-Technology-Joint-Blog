@@ -1,0 +1,77 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import StudioShell from "../../components/studio/StudioShell.astro";
+---
+
+<BaseLayout
+    title="Studio Settings | The Technology Joint"
+    description="Configure Studio defaults and publishing preferences."
+>
+    <StudioShell active="settings">
+        <header class="studio-header">
+            <div>
+                <p class="studio-eyebrow">Workspace defaults</p>
+                <h2>Studio settings</h2>
+            </div>
+        </header>
+
+        <section class="studio-grid">
+            <article class="studio-panel">
+                <h3>Brand defaults</h3>
+                <p>
+                    Set preferred tone, author signature, and default category
+                    templates.
+                </p>
+            </article>
+            <article class="studio-panel">
+                <h3>SEO defaults</h3>
+                <p>
+                    Configure meta templates, focus keywords, and internal link
+                    suggestions.
+                </p>
+            </article>
+        </section>
+    </StudioShell>
+</BaseLayout>
+
+<style>
+    .studio-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .studio-eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 0.72rem;
+        color: var(--color-muted);
+        margin: 0 0 0.35rem;
+    }
+
+    .studio-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .studio-panel {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        padding: 1.25rem;
+    }
+
+    @media (max-width: 760px) {
+        .studio-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .studio-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>

@@ -1,0 +1,274 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import StudioShell from "../../components/studio/StudioShell.astro";
+
+const slug = Astro.url.searchParams.get("slug") || "";
+const posts = await getCollection("articles");
+const selectedPost = posts.find((post) => post.id === slug);
+
+const article = selectedPost
+    ? {
+          id: selectedPost.id,
+          slug: selectedPost.id,
+          title: selectedPost.data.title,
+          description: selectedPost.data.description,
+          category: selectedPost.data.category,
+          tags: selectedPost.data.tags.join(", "),
+          draft: selectedPost.data.draft,
+          featured: selectedPost.data.featured,
+          pubDate: selectedPost.data.pubDate.toISOString().slice(0, 10),
+          updatedDate:
+              selectedPost.data.updatedDate?.toISOString().slice(0, 10) || "",
+          body: selectedPost.body,
+      }
+    : null;
+---
+
+<BaseLayout
+    title="Studio Editor | The Technology Joint"
+    description="Edit existing articles from the private Studio workspace."
+>
+    <StudioShell active="articles">
+        <header class="studio-header">
+            <div>
+                <p class="studio-eyebrow">Content editor</p>
+                <h2>{article ? "Edit article" : "Create article"}</h2>
+            </div>
+            <a class="studio-button" href="/studio/articles">Back to list</a>
+        </header>
+
+        <section class="studio-panel">
+            {
+                article ? (
+                    <form id="studio-editor-form" class="studio-form">
+                        <input type="hidden" name="slug" value={article.slug} />
+                        <label>
+                            Title
+                            <input name="title" value={article.title} />
+                        </label>
+                        <label>
+                            Description
+                            <textarea name="description" rows="3">
+                                {article.description}
+                            </textarea>
+                        </label>
+                        <label>
+                            Category
+                            <input name="category" value={article.category} />
+                        </label>
+                        <label>
+                            Tags
+                            <input name="tags" value={article.tags} />
+                        </label>
+                        <label>
+                            Published date
+                            <input name="pubDate" value={article.pubDate} />
+                        </label>
+                        <label>
+                            Updated date
+                            <input
+                                name="updatedDate"
+                                value={article.updatedDate}
+                            />
+                        </label>
+                        <label>
+                            Draft
+                            <input
+                                name="draft"
+                                type="checkbox"
+                                checked={article.draft}
+                            />
+                        </label>
+                        <label>
+                            Featured
+                            <input
+                                name="featured"
+                                type="checkbox"
+                                checked={article.featured}
+                            />
+                        </label>
+                        <label>
+                            Body
+                            <textarea name="body" rows="16">
+                                {article.body}
+                            </textarea>
+                        </label>
+                        <div
+                            id="save-status"
+                            class="studio-status"
+                            aria-live="polite"
+                        >
+                            Changes are ready to save.
+                        </div>
+                        <div class="studio-form__actions">
+                            <button
+                                class="studio-button"
+                                type="submit"
+                                value="save"
+                            >
+                                Save draft
+                            </button>
+                            <button
+                                class="studio-button studio-button--accent"
+                                type="submit"
+                                value="publish"
+                            >
+                                Publish now
+                            </button>
+                            <button
+                                class="studio-button studio-button--secondary"
+                                type="button"
+                            >
+                                Preview
+                            </button>
+                        </div>
+                    </form>
+                ) : (
+                    <p>
+                        No article was selected. Return to the article list and
+                        choose an entry to edit.
+                    </p>
+                )
+            }
+        </section>
+    </StudioShell>
+</BaseLayout>
+
+<script>
+    const form = document.getElementById(
+        "studio-editor-form",
+    ) as HTMLFormElement | null;
+    const status = document.getElementById("save-status");
+
+    if (form && status) {
+        form.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const submitter = event.submitter as HTMLButtonElement | null;
+            const formData = new FormData(form);
+            const isPublish = submitter?.value === "publish";
+            const slug = String(formData.get("slug") || "untitled");
+
+            const payload = {
+                slug,
+                title: String(formData.get("title") || ""),
+                description: String(formData.get("description") || ""),
+                category: String(formData.get("category") || ""),
+                tags: String(formData.get("tags") || "")
+                    .split(",")
+                    .map((tag) => tag.trim())
+                    .filter(Boolean),
+                draft: !isPublish && formData.get("draft") === "on",
+                featured: formData.get("featured") === "on",
+                pubDate: String(formData.get("pubDate") || ""),
+                updatedDate: String(formData.get("updatedDate") || ""),
+                body: String(formData.get("body") || ""),
+            };
+
+            status.textContent = isPublish
+                ? "Publishing your article…"
+                : "Saving your changes…";
+
+            window.localStorage.setItem(
+                `studio-article-${slug}`,
+                JSON.stringify(payload),
+            );
+
+            status.textContent = isPublish
+                ? `Published article ${slug}.`
+                : `Saved article ${slug}.`;
+        });
+    }
+</script>
+
+<style>
+    .studio-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .studio-eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 0.72rem;
+        color: var(--color-muted);
+        margin: 0 0 0.35rem;
+    }
+
+    .studio-button {
+        border: 0;
+        background: var(--color-primary);
+        color: var(--color-on-primary);
+        border-radius: 999px;
+        padding: 0.85rem 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        min-height: 44px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .studio-button--secondary {
+        background: var(--color-surface-alt);
+        color: var(--color-text);
+        border: 1px solid var(--color-border);
+    }
+
+    .studio-button--accent {
+        background: linear-gradient(
+            135deg,
+            var(--color-primary),
+            var(--color-accent)
+        );
+    }
+
+    .studio-panel {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        padding: 1.25rem;
+    }
+
+    .studio-form {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .studio-form label {
+        display: grid;
+        gap: 0.4rem;
+        font-weight: 600;
+    }
+
+    .studio-form input,
+    .studio-form textarea {
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: 0.8rem 0.9rem;
+        font: inherit;
+        background: var(--color-background);
+        color: var(--color-text);
+    }
+
+    .studio-form__actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .studio-status {
+        color: var(--color-muted);
+        font-size: 0.95rem;
+    }
+
+    @media (max-width: 760px) {
+        .studio-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>

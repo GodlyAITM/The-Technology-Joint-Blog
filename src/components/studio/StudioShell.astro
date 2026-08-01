@@ -1,0 +1,160 @@
+---
+const { active = "dashboard" } = Astro.props;
+const navItems = [
+    { key: "dashboard", label: "Dashboard", href: "/studio" },
+    { key: "articles", label: "Articles", href: "/studio/articles" },
+    { key: "media", label: "Media", href: "/studio/media" },
+    { key: "seo", label: "SEO", href: "/studio/seo" },
+    { key: "settings", label: "Settings", href: "/studio/settings" },
+];
+---
+
+<div class="studio-shell">
+    <aside class="studio-sidebar" aria-label="Studio navigation">
+        <div class="studio-brand">
+            <div class="studio-brand__mark">TJ</div>
+            <div>
+                <p class="studio-brand__eyebrow">Private Studio</p>
+                <h1>The Technology Joint</h1>
+            </div>
+        </div>
+
+        <nav class="studio-nav">
+            {
+                navItems.map((item) => (
+                    <a
+                        class:list={[item.key === active ? "active" : ""]}
+                        href={item.href}
+                    >
+                        {item.label}
+                    </a>
+                ))
+            }
+        </nav>
+
+        <div class="studio-card">
+            <p class="studio-card__eyebrow">Current role</p>
+            <strong>Writer</strong>
+            <p>Secure workspace for drafting and reviewing content.</p>
+        </div>
+    </aside>
+
+    <main class="studio-main">
+        <slot />
+    </main>
+</div>
+
+<style>
+    .studio-shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr);
+        background: var(--color-background);
+        color: var(--color-text);
+    }
+
+    .studio-sidebar {
+        padding: 2rem 1.25rem;
+        border-right: 1px solid var(--color-border);
+        background: color-mix(
+            in srgb,
+            var(--color-surface) 92%,
+            var(--color-background)
+        );
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        position: sticky;
+        top: 0;
+        align-self: start;
+        height: 100vh;
+    }
+
+    .studio-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+    }
+
+    .studio-brand__mark {
+        display: inline-grid;
+        place-items: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 999px;
+        background: linear-gradient(
+            135deg,
+            var(--color-primary),
+            var(--color-accent)
+        );
+        color: white;
+        font-weight: 700;
+    }
+
+    .studio-brand__eyebrow,
+    .studio-card__eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        font-size: 0.72rem;
+        color: var(--color-muted);
+        margin: 0 0 0.35rem;
+    }
+
+    .studio-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .studio-nav a {
+        color: var(--color-text);
+        padding: 0.85rem 0.95rem;
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        transition:
+            background var(--transition),
+            color var(--transition);
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+
+    .studio-nav a.active,
+    .studio-nav a:hover {
+        background: var(--color-primary-soft);
+        color: var(--color-primary-dark);
+    }
+
+    .studio-card {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        padding: 1rem;
+    }
+
+    .studio-main {
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    @media (max-width: 960px) {
+        .studio-shell {
+            grid-template-columns: 1fr;
+        }
+
+        .studio-sidebar {
+            border-right: 0;
+            border-bottom: 1px solid var(--color-border);
+            height: auto;
+            position: static;
+            padding-bottom: 1.25rem;
+        }
+
+        .studio-main {
+            padding: 1.25rem;
+        }
+    }
+</style>
