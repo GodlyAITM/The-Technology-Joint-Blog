@@ -1,5 +1,7 @@
 import type { Article } from "./articles";
 
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
 export interface SearchDocument {
     id: string;
     title: string;
@@ -28,7 +30,7 @@ export function buildSearchIndex(
 
         author: article.data.author,
 
-        url: `/articles/${article.id}/`,
+        url: `${base}/articles/${article.id}/`,
 
     }));
 

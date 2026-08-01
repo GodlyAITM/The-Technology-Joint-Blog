@@ -20,7 +20,7 @@ export const SITE = {
 
     logo: `${import.meta.env.BASE_URL}images/logo.jpg`,
 
-    defaultHero: "/images/default-hero.jpg",
+    defaultHero: `${import.meta.env.BASE_URL}images/default-hero.jpg`,
 
     founderImage: `${import.meta.env.BASE_URL}images/founder.jpg`,
     copyright:

@@ -40,10 +40,16 @@ const recentPosts = posts
             </div>
 
             <nav class="studio-nav">
-                <a class="active" href="/studio">Dashboard</a>
-                <a href="/studio/articles">Articles</a>
-                <a href="/studio/editor">Editor</a>
-                <a href="/studio/settings">Settings</a>
+                <a class="active" href={`${import.meta.env.BASE_URL}studio`}
+                    >Dashboard</a
+                >
+                <a href={`${import.meta.env.BASE_URL}studio/articles`}
+                    >Articles</a
+                >
+                <a href={`${import.meta.env.BASE_URL}studio/editor`}>Editor</a>
+                <a href={`${import.meta.env.BASE_URL}studio/settings`}
+                    >Settings</a
+                >
             </nav>
 
             <div class="studio-card">
@@ -63,7 +69,11 @@ const recentPosts = posts
                         calendar moving with a calmer workspace.
                     </p>
                 </div>
-                <a class="studio-button" href="/studio/editor">New article</a>
+                <a
+                    class="studio-button"
+                    href={`${import.meta.env.BASE_URL}studio/editor`}
+                    >New article</a
+                >
             </header>
 
             <section class="studio-hero">
@@ -76,12 +86,15 @@ const recentPosts = posts
                     </p>
                 </article>
                 <div class="studio-hero__actions">
-                    <a class="studio-button" href="/studio/articles"
+                    <a
+                        class="studio-button"
+                        href={`${import.meta.env.BASE_URL}studio/articles`}
                         >Manage articles</a
                     >
                     <a
                         class="studio-button studio-button--secondary"
-                        href="/studio/media">Open media</a
+                        href={`${import.meta.env.BASE_URL}studio/media`}
+                        >Open media</a
                     >
                 </div>
             </section>
@@ -109,7 +122,9 @@ const recentPosts = posts
                 <article class="studio-panel">
                     <div class="studio-panel__header">
                         <h3>Recent activity</h3>
-                        <a href="/studio">View all</a>
+                        <a href={`${import.meta.env.BASE_URL}studio`}
+                            >View all</a
+                        >
                     </div>
                     <ul class="studio-list">
                         {
@@ -121,7 +136,7 @@ const recentPosts = posts
                                     </div>
                                     <span>
                                         <a
-                                            href={`/studio/editor?slug=${post.slug}`}
+                                            href={`${import.meta.env.BASE_URL}studio/editor?slug=${post.slug}`}
                                         >
                                             {post.updated}
                                         </a>
@@ -143,7 +158,7 @@ const recentPosts = posts
                         >
                         <a
                             class="studio-button studio-button--secondary"
-                            href="/studio/media"
+                            href={`${import.meta.env.BASE_URL}studio/media`}
                         >
                             Upload media
                         </a>

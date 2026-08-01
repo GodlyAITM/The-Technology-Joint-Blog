@@ -152,13 +152,19 @@ const websiteSchema = {
                     window.localStorage.getItem("studio-auth") ===
                     "authenticated";
 
+                const base = window.location.pathname.startsWith(
+                    "/the-technology-joint-blog",
+                )
+                    ? "/the-technology-joint-blog"
+                    : "";
+
                 if (isStudioRoute && !isLoginRoute && !isAuthenticated) {
-                    window.location.replace("/studio/login");
+                    window.location.replace(`${base}/studio/login`);
                     return;
                 }
 
                 if (isLoginRoute && isAuthenticated) {
-                    window.location.replace("/studio");
+                    window.location.replace(`${base}/studio`);
                     return;
                 }
             })();

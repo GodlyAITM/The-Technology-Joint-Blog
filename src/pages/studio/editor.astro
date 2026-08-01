@@ -35,7 +35,11 @@ const article = selectedPost
                 <p class="studio-eyebrow">Content editor</p>
                 <h2>{article ? "Edit article" : "Create article"}</h2>
             </div>
-            <a class="studio-button" href="/studio/articles">Back to list</a>
+            <a
+                class="studio-button"
+                href={`${import.meta.env.BASE_URL}studio/articles`}
+                >Back to list</a
+            >
         </header>
 
         <section class="studio-panel">

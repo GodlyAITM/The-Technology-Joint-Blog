@@ -15,7 +15,7 @@ export async function GET() {
             description: article.data.description,
             pubDate: article.data.pubDate,
 
-            link: `/articles/${article.id}/`,
+            link: `${import.meta.env.BASE_URL.replace(/\/$/, "")}/articles/${article.id}/`,
         })),
     });
 }

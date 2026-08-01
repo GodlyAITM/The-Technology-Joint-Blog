@@ -57,7 +57,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
                 password === "god88illary"
             ) {
                 window.localStorage.setItem("studio-auth", "authenticated");
-                window.location.assign("/studio");
+                window.location.assign(`${import.meta.env.BASE_URL}studio`);
             } else {
                 status.textContent = "The email or password is incorrect.";
             }

@@ -40,7 +40,7 @@ const posts = (await getCollection("articles"))
         <section class="studio-panel">
             <div class="studio-panel__header">
                 <h3>Drafts and published content</h3>
-                <a href="/studio">Open dashboard</a>
+                <a href={`${import.meta.env.BASE_URL}studio`}>Open dashboard</a>
             </div>
             <table class="studio-table">
                 <thead>
@@ -61,7 +61,7 @@ const posts = (await getCollection("articles"))
                                 <td>
                                     <a
                                         class="studio-link"
-                                        href={`/studio/editor?slug=${post.slug}`}
+                                        href={`${import.meta.env.BASE_URL}studio/editor?slug=${post.slug}`}
                                     >
                                         Edit
                                     </a>
