@@ -16,7 +16,7 @@ export const SITE = {
 
     url:
         import.meta.env.PUBLIC_SITE_URL?.trim() ||
-        "http://localhost:4321",
+        "https://godlyaitm.github.io/The-Technology-Joint-Blog",
 
     logo: `${import.meta.env.BASE_URL}images/logo.jpg`,
 
