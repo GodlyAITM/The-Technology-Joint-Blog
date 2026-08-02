@@ -1,6 +1,10 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import StudioShell from "../../components/studio/StudioShell.astro";
+
+const hasOAuth = Boolean(
+    (import.meta.env.PUBLIC_STUDIO_API_URL as string | undefined)?.trim(),
+);
 ---
 
 <BaseLayout
@@ -25,7 +29,42 @@ import StudioShell from "../../components/studio/StudioShell.astro";
                 <div class="studio-panel__header">
                     <h3>GitHub connection</h3>
                 </div>
-                <form id="github-settings-form" class="studio-form">
+
+                {
+                    hasOAuth && (
+                        <div
+                            class="studio-panel studio-oauth-status"
+                            id="oauth-status"
+                        >
+                            <div class="studio-panel__header">
+                                <h3>GitHub OAuth</h3>
+                            </div>
+                            <p class="studio-lead" id="oauth-status-text">
+                                Checking your GitHub session…
+                            </p>
+                            <div class="studio-form__actions">
+                                <a
+                                    class="studio-button"
+                                    id="oauth-login-btn"
+                                    href="/studio/login"
+                                    hidden
+                                >
+                                    Log in with GitHub
+                                </a>
+                                <button
+                                    class="studio-button studio-button--secondary"
+                                    id="oauth-logout-btn"
+                                    type="button"
+                                    hidden
+                                >
+                                    Sign out
+                                </button>
+                            </div>
+                        </div>
+                    )
+                }
+
+                <form id="github-settings-form" class="studio-form" hidden={hasOAuth}>
                     <div class="studio-field">
                         <label for="gh-token">
                             Personal access token
@@ -39,13 +78,12 @@ import StudioShell from "../../components/studio/StudioShell.astro";
                             placeholder="github_pat_…"
                         />
                         <p class="studio-hint">
-                            Create a fine-grained token with{" "}
-                            <strong>Contents: Read and write</strong> and{" "}
+                            Local-dev fallback: create a fine-grained token
+                            with <strong>Contents: Read and write</strong> and{" "}
                             <strong>Workflows: Read and write</strong> on this
-                            repo. Workflows permission lets the push trigger
-                            the site's auto-rebuild. The token is stored in
-                            this browser only, so re-enter it on each device
-                            you publish from.
+                            repo. When a Studio API worker is configured
+                            (<code>PUBLIC_STUDIO_API_URL</code>), sign in with
+                            GitHub instead and no token is needed.
                         </p>
                     </div>
 
@@ -131,10 +169,18 @@ import StudioShell from "../../components/studio/StudioShell.astro";
         getStudioConfig,
         saveStudioConfig,
         testGitHubConnection,
+        getSession,
+        getLoginUrl,
+        signOut,
         DEFAULT_OWNER,
         DEFAULT_REPO,
         DEFAULT_BRANCH,
     } from "../../lib/studio/github";
+
+    const apiBase = (
+        import.meta.env.PUBLIC_STUDIO_API_URL || ""
+    ).replace(/\/$/, "");
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
     const form = document.getElementById(
         "github-settings-form",
@@ -146,9 +192,43 @@ import StudioShell from "../../components/studio/StudioShell.astro";
         "test-connection",
     ) as HTMLButtonElement | null;
 
-    if (!form || !status) {
-        throw new Error("Studio settings failed to initialize.");
+    /* ---- OAuth mode: show live session state ---- */
+    const oauthStatusText = document.getElementById("oauth-status-text");
+    const oauthLoginBtn = document.getElementById(
+        "oauth-login-btn",
+    ) as HTMLAnchorElement | null;
+    const oauthLogoutBtn = document.getElementById(
+        "oauth-logout-btn",
+    ) as HTMLButtonElement | null;
+
+    if (apiBase) {
+        void getSession().then((session) => {
+            if (oauthStatusText) {
+                oauthStatusText.textContent = session?.authenticated
+                    ? `Signed in as ${session.user?.name || session.user?.login || "GitHub user"} (@${session.user?.login || "—"}). Saves and publishes commit to the live repository through the Studio API.`
+                    : "Not signed in. Log in with GitHub to connect the Studio to the live repository.";
+            }
+            if (oauthLoginBtn) {
+                oauthLoginBtn.hidden = session?.authenticated === true;
+                if (!session?.authenticated) {
+                    oauthLoginBtn.href = getLoginUrl(`${base}/studio/settings`);
+                }
+            }
+            if (oauthLogoutBtn) {
+                oauthLogoutBtn.hidden = session?.authenticated !== true;
+            }
+        });
+
+        oauthLogoutBtn?.addEventListener("click", async () => {
+            await signOut();
+            window.location.reload();
+        });
     }
+
+    if (!apiBase) {
+        if (!form || !status) {
+            throw new Error("Studio settings failed to initialize.");
+        }
 
     const tokenInput = form.elements.namedItem("token") as HTMLInputElement;
     const ownerInput = form.elements.namedItem("owner") as HTMLInputElement;
@@ -177,7 +257,7 @@ import StudioShell from "../../components/studio/StudioShell.astro";
     /* Pre-fill from stored config */
     const stored = getStudioConfig();
     if (stored) {
-        tokenInput.value = stored.token;
+        tokenInput.value = stored.token ?? "";
         ownerInput.value = stored.owner;
         repoInput.value = stored.repo;
         branchInput.value = stored.branch;
@@ -221,4 +301,5 @@ import StudioShell from "../../components/studio/StudioShell.astro";
         setStatus(result.message, result.ok ? "success" : "error");
         testBtn.disabled = false;
     });
+    }
 </script>

@@ -36,7 +36,7 @@ const navItems = [
         </nav>
 
         <div class="studio-sidebar__footer">
-            <div class="studio-card">
+            <div class="studio-card" data-role-card>
                 <p class="studio-card__eyebrow">Current role</p>
                 <strong>Writer</strong>
                 <p>Secure workspace for drafting and reviewing content.</p>
@@ -57,11 +57,51 @@ const navItems = [
         "[data-studio-signout]",
     );
 
-    signOut?.addEventListener("click", () => {
+    signOut?.addEventListener("click", async () => {
+        const apiBase = (
+            import.meta.env.PUBLIC_STUDIO_API_URL || ""
+        ).replace(/\/$/, "");
+        if (apiBase) {
+            try {
+                await fetch(`${apiBase}/api/auth/logout`, {
+                    method: "POST",
+                    credentials: "include",
+                });
+            } catch {
+                // best-effort — local redirect still happens
+            }
+        }
         window.localStorage.removeItem("studio-auth");
         const base = import.meta.env.BASE_URL.replace(/\/$/, "");
         window.location.assign(`${base}/studio/login`);
     });
+
+    // Show the signed-in GitHub user in the sidebar footer (OAuth mode)
+    const roleCard = document.querySelector<HTMLElement>(
+        ".studio-card[data-role-card]",
+    );
+    const apiBase = (import.meta.env.PUBLIC_STUDIO_API_URL || "").replace(
+        /\/$/,
+        "",
+    );
+    if (apiBase && roleCard) {
+        fetch(`${apiBase}/api/auth/session`, { credentials: "include" })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data?.authenticated && data?.user) {
+                    const login = data.user.login || "";
+                    const label = roleCard.querySelector("strong");
+                    if (label) label.textContent = `@${login}`;
+                    const note = roleCard.querySelector("p");
+                    if (note) {
+                        note.textContent = `Signed in via GitHub. Edits commit to the live repository.`;
+                    }
+                }
+            })
+            .catch(() => {
+                // ignore — footer keeps its default copy
+            });
+    }
 </script>
 
 <style>

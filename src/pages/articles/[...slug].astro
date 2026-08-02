@@ -229,6 +229,8 @@ const pageDescription = buildMetaDescription(
 
     .prose {
         width: 100%;
+        /* Prevent long words/URLs from causing horizontal scroll */
+        overflow-wrap: break-word;
     }
 
     .prose h2 {
@@ -477,6 +479,14 @@ const pageDescription = buildMetaDescription(
     @media (max-width: 480px) {
         .category {
             font-size: 0.75rem;
+        }
+
+        .article-header {
+            padding: 2.5rem 0 1.5rem;
+        }
+
+        .article-content {
+            padding: 2rem 0 4rem;
         }
 
         .article-header h1 {

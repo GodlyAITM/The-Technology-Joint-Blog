@@ -4,8 +4,10 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 import StudioShell from "../../components/studio/StudioShell.astro";
 import { getAllAuthors } from "../../lib/author";
 
-const slug = Astro.url.searchParams.get("slug") || "";
-const isDuplicate = Astro.url.searchParams.get("duplicate") === "1";
+// NOTE: Astro.url.searchParams is empty at build time for static pages.
+// The slug is read client-side from window.location at runtime.
+const slug = "";
+const isDuplicate = false;
 const posts = await getCollection("articles");
 const sourcePost = posts.find((post) => post.id === slug) ?? null;
 
@@ -445,6 +447,9 @@ const allSlugs = posts.map((post) => post.id);
     import {
         getStudioConfig,
         hasStudioConfig,
+        hasApi,
+        getSession,
+        getLoginUrl,
         getFile,
         putFile,
         slugify,
@@ -463,8 +468,8 @@ const allSlugs = posts.map((post) => post.id);
         throw new Error("Studio editor failed to initialize.");
     }
 
-    const isEditing = form.dataset.editing === "true";
-    const originalSlug = form.dataset.originalSlug || "";
+    let isEditing = form.dataset.editing === "true";
+    let originalSlug = form.dataset.originalSlug || "";
     const allSlugs = JSON.parse(form.dataset.slugs || "[]") as string[];
 
     const slugInput = document.getElementById(
@@ -495,6 +500,248 @@ const allSlugs = posts.map((post) => post.id);
     let pendingImage: { base64: string; name: string } | null = null;
     let slugEdited = Boolean(slugInput?.value);
 
+    /* ------------------------------------------------------------------ */
+    /* Client-side article loading for edit / duplicate mode                */
+    /* ------------------------------------------------------------------ */
+    /**
+     * Simple YAML frontmatter parser for the article format produced by
+     * serializeArticle(). Handles quoted scalars, block scalars (>-),
+     * boolean values, arrays and plain strings.
+     */
+    function parseFrontmatter(raw: string): {
+        frontmatter: Record<string, unknown>;
+        body: string;
+    } {
+        const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
+        if (!match) return { frontmatter: {}, body: raw };
+
+        const fm: Record<string, unknown> = {};
+        const lines = match[1].split(/\r?\n/);
+        let currentKey = "";
+        let blockScalar = "";
+        let inArray = false;
+        const arrayValues: string[] = [];
+
+        for (const line of lines) {
+            // Block scalar (>-)
+            if (blockScalar) {
+                const indent = line.match(/^(\s*)/)?.[1] ?? "";
+                if (indent.length >= 2 || line.trim() === "") {
+                    fm[currentKey] = (fm[currentKey] || "") + (fm[currentKey] ? "\n" : "") + line.trimStart();
+                    continue;
+                } else {
+                    blockScalar = "";
+                }
+            }
+
+            // Array item
+            const arrayMatch = line.match(/^\s+-\s+(.+)/);
+            if (arrayMatch && currentKey) {
+                inArray = true;
+                arrayValues.push(unquote(arrayMatch[1]));
+                continue;
+            }
+
+            // Flush pending array
+            if (inArray && currentKey) {
+                fm[currentKey] = [...arrayValues];
+                arrayValues.length = 0;
+                inArray = false;
+            }
+
+            // Key: value
+            const kvMatch = line.match(/^([a-zA-Z][a-zA-Z0-9]*):\s*(.*)/);
+            if (kvMatch) {
+                currentKey = kvMatch[1];
+                const val = kvMatch[2].trim();
+
+                if (val === ">-") {
+                    blockScalar = ">-";
+                    fm[currentKey] = "";
+                } else if (val === "true") {
+                    fm[currentKey] = true;
+                } else if (val === "false") {
+                    fm[currentKey] = false;
+                } else if (val === "[]" || val === "") {
+                    fm[currentKey] = [];
+                } else {
+                    fm[currentKey] = unquote(val);
+                }
+            }
+        }
+
+        // Flush trailing array
+        if (inArray && currentKey) {
+            fm[currentKey] = [...arrayValues];
+        }
+
+        return { frontmatter: fm, body: match[2].replace(/^\n/, "") };
+    }
+
+    function unquote(s: string): string {
+        return s.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
+    }
+
+    /**
+     * When the URL contains ?slug=... (or ?slug=...&duplicate=1), load
+     * the article from GitHub so the form is pre-populated with real data.
+     */
+    async function loadArticleFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const urlSlug = params.get("slug") || "";
+        const urlDuplicate = params.get("duplicate") === "1";
+
+        if (!urlSlug) return; // no slug → new article, nothing to load
+
+        const apiMode = hasApi();
+        const config = getStudioConfig();
+
+        if (!apiMode && !config) {
+            setStatus(
+                "GitHub is not connected — open Studio → Settings first.",
+                "error",
+            );
+            return;
+        }
+
+        setStatus("Loading article from GitHub…");
+
+        try {
+            const mdPath = `src/content/articles/${urlSlug}.md`;
+            const file = await getFile(mdPath, {
+                config: apiMode ? undefined : (config ?? undefined),
+                decode: true,
+            });
+            if (!file?.content) {
+                setStatus(`Article "${urlSlug}" not found on GitHub.`, "error");
+                return;
+            }
+
+            const { frontmatter: fm, body } = parseFrontmatter(file.content);
+
+            // Update the editing state so saveArticle uses the right slug
+            const editingFlag = urlDuplicate ? "false" : "true";
+            const origSlug = urlDuplicate ? `${urlSlug}-copy` : urlSlug;
+            if (form) {
+                form.dataset.editing = editingFlag;
+                form.dataset.originalSlug = origSlug;
+            }
+            // Re-read local copies so saveArticle() uses the right slug
+            isEditing = editingFlag === "true";
+            originalSlug = origSlug;
+
+            // Update the page header
+            const headerH2 = document.querySelector(".studio-header h2");
+            if (headerH2) {
+                headerH2.textContent = urlDuplicate
+                    ? "Duplicate article"
+                    : "Edit article";
+            }
+
+            const editorForm = form;
+            if (!editorForm) return;
+
+            // Populate text fields
+            const setValue = (id: string, val: unknown) => {
+                const el = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | null;
+                if (el && val != null) el.value = String(val);
+            };
+
+            setValue("field-title", fm.title);
+            setValue("field-description", fm.description);
+            setValue("field-pubdate", fm.pubDate);
+            setValue("field-updated", fm.updatedDate);
+            setValue("field-category", fm.category);
+            setValue("field-tags", Array.isArray(fm.tags) ? fm.tags.join(", ") : fm.tags);
+            setValue("field-heroimage", null); // file input, skip
+            setValue("field-alt", fm.featuredImageAlt);
+            setValue("field-seotitle", fm.seoTitle);
+            setValue("field-seodesc", fm.seoDescription);
+            setValue("field-canonical", fm.canonicalURL);
+            setValue("field-body", body.replace(/\n$/, ""));
+
+            // Author (select)
+            if (fm.author) {
+                const authorSelect = document.getElementById("field-author") as HTMLSelectElement | null;
+                if (authorSelect) {
+                    // Ensure the option exists
+                    const val = String(fm.author);
+                    if (![...authorSelect.options].some((o) => o.value === val)) {
+                        const opt = document.createElement("option");
+                        opt.value = val;
+                        opt.textContent = val;
+                        authorSelect.appendChild(opt);
+                    }
+                    authorSelect.value = val;
+                }
+            }
+
+            // Checkboxes
+            const featuredCb = editorForm.querySelector<HTMLInputElement>('input[name="featured"]');
+            if (featuredCb) featuredCb.checked = Boolean(fm.featured);
+            const draftCb = editorForm.querySelector<HTMLInputElement>('input[name="draft"]');
+            if (draftCb) draftCb.checked = urlDuplicate ? true : Boolean(fm.draft);
+
+            // Hidden hero image path
+            const heroHidden = editorForm.querySelector<HTMLInputElement>('input[name="heroImage"]');
+            if (heroHidden) {
+                heroHidden.value = urlDuplicate ? "" : String(fm.heroImage || "");
+            }
+
+            // Show hero image preview if present
+            if (!urlDuplicate && fm.heroImage) {
+                showPreview(`${base}${fm.heroImage}`, "Current hero image");
+            }
+
+            // Slug field handling: show for duplicate, hide for edit
+            if (urlDuplicate) {
+                const slugField = document.getElementById("field-slug") as HTMLInputElement | null;
+                if (slugField) {
+                    slugField.value = `${urlSlug}-copy`;
+                }
+            } else {
+                // Hide the slug field container when editing an existing article
+                const slugFieldContainer = document.getElementById("field-slug")?.closest(".studio-field");
+                if (slugFieldContainer) slugFieldContainer.setAttribute("hidden", "");
+            }
+
+            // Add preview link for published non-draft articles
+            if (!urlDuplicate && fm.draft === false) {
+                const actionsDiv = document.querySelector(".studio-form__actions");
+                if (actionsDiv && !actionsDiv.querySelector("a[href*='/articles/']")) {
+                    const previewLink = document.createElement("a");
+                    previewLink.className = "studio-button studio-button--secondary";
+                    previewLink.href = `${base}/articles/${urlSlug}/`;
+                    previewLink.target = "_blank";
+                    previewLink.rel = "noopener";
+                    previewLink.textContent = "Preview";
+                    actionsDiv.appendChild(previewLink);
+                }
+            }
+
+            setStatus(
+                urlDuplicate
+                    ? `Duplicating "${urlSlug}" — edit the slug and details, then save.`
+                    : `Loaded "${urlSlug}" — make your changes and save.`,
+                "info",
+            );
+        } catch (err) {
+            const statusCode = (err as { status?: number })?.status;
+            if (apiMode && statusCode === 401) {
+                // Session expired or missing — send the editor to login
+                window.location.assign(getLoginUrl(window.location.href));
+                return;
+            }
+            setStatus(
+                `Failed to load article: ${err instanceof Error ? err.message : String(err)}`,
+                "error",
+            );
+        }
+    }
+
+    // Kick off client-side loading immediately
+    void loadArticleFromUrl();
+
     /* ---- Slug auto-fill from title (new articles only) ---- */
     titleInput?.addEventListener("input", () => {
         if (isEditing || !slugInput || slugEdited) return;
@@ -509,7 +756,9 @@ const allSlugs = posts.map((post) => post.id);
     const existingHero = document.querySelector<HTMLInputElement>(
         'input[name="heroImage"]',
     )?.value;
-    if (existingHero) showPreview(`${base}${existingHero}`, "Current hero image");
+    if (existingHero && !new URLSearchParams(window.location.search).get("slug")) {
+        showPreview(`${base}${existingHero}`, "Current hero image");
+    }
 
     heroFile?.addEventListener("change", () => {
         const file = heroFile.files?.[0];
@@ -553,6 +802,7 @@ const allSlugs = posts.map((post) => post.id);
         message: string,
         kind: "info" | "success" | "error" = "info",
     ) => {
+        if (!status) return;
         status.className = "studio-status";
         if (kind === "success") status.classList.add("studio-status--success");
         if (kind === "error") status.classList.add("studio-status--error");
@@ -561,8 +811,9 @@ const allSlugs = posts.map((post) => post.id);
 
     /* ---- Save / publish ---- */
     const saveArticle = async (action: "save" | "publish") => {
+        const apiMode = hasApi();
         const config = getStudioConfig();
-        if (!config) {
+        if (!apiMode && !config) {
             setStatus(
                 "GitHub is not connected. Open Studio → Settings and save your GitHub token first.",
                 "error",
@@ -667,7 +918,7 @@ const allSlugs = posts.map((post) => post.id);
                 const ext = extMatch ? extMatch[1].toLowerCase() : "png";
                 const imagePath = `public/images/articles/${slug}.${ext}`;
                 const existingImage = await getFile(imagePath, {
-                    config,
+                    config: apiMode ? undefined : (config ?? undefined),
                     decode: false,
                 });
                 await putFile(
@@ -677,7 +928,7 @@ const allSlugs = posts.map((post) => post.id);
                     {
                         sha: existingImage?.sha,
                         base64: true,
-                        config,
+                        config: apiMode ? undefined : (config ?? undefined),
                     },
                 );
                 articleData.heroImage = `/images/articles/${slug}.${ext}`;
@@ -686,12 +937,18 @@ const allSlugs = posts.map((post) => post.id);
 
             /* 2. Commit the article markdown */
             const markdown = serializeArticle(articleData, body);
-            const existing = await getFile(mdPath, { config, decode: false });
+            const existing = await getFile(mdPath, {
+                config: apiMode ? undefined : (config ?? undefined),
+                decode: false,
+            });
             await putFile(
                 mdPath,
                 markdown,
                 `Studio: ${action === "publish" ? "publish" : "save draft"} ${slug}`,
-                { sha: existing?.sha, config },
+                {
+                    sha: existing?.sha,
+                    config: apiMode ? undefined : (config ?? undefined),
+                },
             );
 
             const verb = action === "publish" ? "published" : "saved as a draft";
@@ -700,6 +957,17 @@ const allSlugs = posts.map((post) => post.id);
                 "success",
             );
         } catch (err) {
+            const statusCode = (err as { status?: number })?.status;
+            if (apiMode && statusCode === 401) {
+                setStatus(
+                    "Your GitHub session expired. Redirecting to sign in…",
+                    "error",
+                );
+                window.setTimeout(() => {
+                    window.location.assign(getLoginUrl(window.location.href));
+                }, 1200);
+                return;
+            }
             setStatus(
                 `Save failed: ${err instanceof Error ? err.message : String(err)}`,
                 "error",
@@ -708,11 +976,20 @@ const allSlugs = posts.map((post) => post.id);
     }
 
     /* Show a hint when GitHub isn't configured yet */
-    if (!hasStudioConfig()) {
+    if (!hasApi() && !hasStudioConfig()) {
         setStatus(
             "GitHub is not connected yet — open Studio → Settings and save your token before saving.",
             "info",
         );
+    } else if (hasApi()) {
+        void getSession().then((session) => {
+            if (!session?.authenticated) {
+                setStatus(
+                    "You are not signed in — the editor will redirect you to GitHub sign-in before loading or saving.",
+                    "info",
+                );
+            }
+        });
     }
 
     form.addEventListener("submit", (event) => {

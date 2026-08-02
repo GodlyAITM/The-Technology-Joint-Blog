@@ -1,69 +1,100 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const apiBase = (import.meta.env.PUBLIC_STUDIO_API_URL as string | undefined)?.replace(/\/$/, "");
+const hasOAuth = Boolean(apiBase);
 ---
 
 <BaseLayout
     title="Studio Login | The Technology Joint"
-    description="Access the private Studio workspace."
+    description="Sign in to the private Studio workspace with GitHub."
 >
     <section class="login-shell">
         <div class="login-card">
             <p class="studio-eyebrow">Private access</p>
             <h1>Welcome to the Studio</h1>
             <p>
-                Use the studio credentials below to enter the private workspace.
+                Sign in with GitHub to manage articles on the live site.
+                The Studio only ever writes to The Technology Joint repository.
             </p>
-            <form id="studio-login-form" class="login-form">
-                <label>
-                    <span>Email</span>
-                    <input
-                        type="email"
-                        name="email"
-                        value="alabi43israel@gmail.com"
-                        required
-                    />
-                </label>
-                <label>
-                    <span>Password</span>
-                    <input
-                        type="password"
-                        name="password"
-                        value="god88illary"
-                        required
-                    />
-                </label>
-                <div id="login-status" class="login-status">
-                    Use the studio credentials to continue.
-                </div>
-                <button type="submit">Enter Studio</button>
-            </form>
+
+            {
+                hasOAuth ? (
+                    <div id="login-oauth" class="login-oauth">
+                        <a class="github-button" href="/studio/login">
+                            <svg
+                                viewBox="0 0 24 24"
+                                width="20"
+                                height="20"
+                                fill="currentColor"
+                                aria-hidden="true"
+                            >
+                                <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+                            </svg>
+                            Log in with GitHub
+                        </a>
+                        <p class="login-hint">
+                            You'll be redirected to GitHub to authorize the
+                            Studio app. Your session is stored in a secure
+                            cookie.
+                        </p>
+                        <div id="login-status" class="login-status" aria-live="polite">
+                            Starting sign in…
+                        </div>
+                    </div>
+                ) : (
+                    <div id="login-local" class="login-oauth">
+                        <p class="login-warning">
+                            <strong>Local development mode.</strong> No Studio
+                            API worker is configured
+                            (<code>PUBLIC_STUDIO_API_URL</code>), so a
+                            lightweight local session is used. Deploy the
+                            worker to enable GitHub sign-in.
+                        </p>
+                        <form id="studio-login-form" class="login-form">
+                            <button type="submit">Enter Studio</button>
+                        </form>
+                        <div id="login-status" class="login-status" aria-live="polite">
+                            Local session gate — continues to the Studio.
+                        </div>
+                    </div>
+                )
+            }
         </div>
     </section>
 </BaseLayout>
 
 <script>
-    const form = document.getElementById(
-        "studio-login-form",
-    ) as HTMLFormElement | null;
-    const status = document.getElementById("login-status");
+    const apiBase = (import.meta.env.PUBLIC_STUDIO_API_URL as string | undefined)?.replace(/\/$/, "");
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-    if (form && status) {
-        form.addEventListener("submit", (event) => {
-            event.preventDefault();
-            const formData = new FormData(form);
-            const email = String(formData.get("email") || "");
-            const password = String(formData.get("password") || "");
+    if (apiBase) {
+        const link = document.querySelector<HTMLAnchorElement>(".github-button");
+        const status = document.getElementById("login-status");
 
-            if (
-                email === "alabi43israel@gmail.com" &&
-                password === "god88illary"
-            ) {
+        if (link && status) {
+            // Preserve the studio page the user came from (e.g. editor deep links)
+            const next =
+                new URLSearchParams(window.location.search).get("next") ||
+                `${base}/studio`;
+            const loginUrl = new URL("/api/auth/login", apiBase);
+            loginUrl.searchParams.set("next", next);
+            link.href = loginUrl.toString();
+            status.textContent = "Ready — click to sign in with GitHub.";
+        }
+    } else {
+        const form = document.getElementById(
+            "studio-login-form",
+        ) as HTMLFormElement | null;
+        const status = document.getElementById("login-status");
+
+        if (form && status) {
+            form.addEventListener("submit", (event) => {
+                event.preventDefault();
                 window.localStorage.setItem("studio-auth", "authenticated");
-                window.location.assign(`${import.meta.env.BASE_URL}studio`);
-            } else {
-                status.textContent = "The email or password is incorrect.";
-            }
-        });
+                window.location.assign(`${base}/studio`);
+            });
+        }
     }
 </script>
 
@@ -97,39 +128,102 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
         margin: 0 0 0.35rem;
     }
 
+    .login-card h1 {
+        margin: 0 0 0.75rem;
+    }
+
+    .login-card > p {
+        color: var(--color-muted);
+        line-height: 1.6;
+        margin: 0 0 1.5rem;
+    }
+
+    .login-oauth {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .github-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.6rem;
+        min-height: 48px;
+        padding: 0.85rem 1.25rem;
+        border-radius: 999px;
+        background: var(--color-text);
+        color: var(--color-background);
+        font-weight: 700;
+        text-decoration: none;
+        transition:
+            opacity var(--transition),
+            transform var(--transition);
+    }
+
+    .github-button:hover {
+        opacity: 0.88;
+        transform: translateY(-1px);
+    }
+
+    .login-hint {
+        font-size: 0.9rem;
+        color: var(--color-muted);
+        line-height: 1.55;
+        margin: 0;
+    }
+
+    .login-status {
+        color: var(--color-muted);
+        font-size: 0.9rem;
+    }
+
+    .login-warning {
+        font-size: 0.9rem;
+        line-height: 1.55;
+        padding: 0.85rem 1rem;
+        border-radius: var(--radius-md);
+        background: color-mix(
+            in srgb,
+            var(--color-warning) 12%,
+            var(--color-surface)
+        );
+        border: 1px solid color-mix(
+            in srgb,
+            var(--color-warning) 45%,
+            var(--color-border)
+        );
+    }
+
+    .login-warning code {
+        background: var(--code-inline-bg);
+        color: var(--code-inline-text);
+        padding: 0.1rem 0.35rem;
+        border-radius: 6px;
+        font-size: 0.82em;
+    }
+
     .login-form {
         display: flex;
         flex-direction: column;
         gap: 1rem;
-        margin-top: 1.25rem;
-    }
-
-    .login-form label {
-        display: flex;
-        flex-direction: column;
-        gap: 0.45rem;
-        font-weight: 600;
-    }
-
-    .login-form input {
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-md);
-        padding: 0.8rem 0.9rem;
-        font: inherit;
+        margin-top: 0.5rem;
     }
 
     .login-form button {
         border: 0;
-        border-radius: var(--radius-md);
+        border-radius: 999px;
         background: var(--color-primary);
         color: white;
         padding: 0.9rem 1rem;
         font-weight: 700;
         cursor: pointer;
+        min-height: 48px;
     }
 
-    .login-status {
-        color: var(--color-muted);
-        font-size: 0.95rem;
+    @media (max-width: 480px) {
+        .login-card {
+            padding: 1.5rem;
+        }
     }
 </style>

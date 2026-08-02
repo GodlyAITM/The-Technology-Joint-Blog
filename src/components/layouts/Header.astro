@@ -14,9 +14,29 @@ const base = import.meta.env.BASE_URL;
 
         <Navigation />
 
-        <button id="theme-toggle" type="button" aria-label="Toggle dark mode">
-            <span>🌙</span>
-        </button>
+        <div class="theme-switch" role="group" aria-label="Theme">
+            <button
+                type="button"
+                data-theme-choice="light"
+                aria-pressed="false"
+            >
+                Light
+            </button>
+            <button
+                type="button"
+                data-theme-choice="dark"
+                aria-pressed="false"
+            >
+                Dark
+            </button>
+            <button
+                type="button"
+                data-theme-choice="system"
+                aria-pressed="false"
+            >
+                System
+            </button>
+        </div>
     </div>
 </header>
 
@@ -36,6 +56,9 @@ const base = import.meta.env.BASE_URL;
         align-items: center;
         gap: 1rem;
         padding: 1rem 0;
+        /* Anchor for the mobile nav dropdown panel */
+        flex-wrap: wrap;
+        position: relative;
     }
 
     .logo {
@@ -55,24 +78,70 @@ const base = import.meta.env.BASE_URL;
         background: var(--color-surface-alt);
     }
 
-    #theme-toggle {
+    .theme-switch {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px;
+        gap: 2px;
+        border: 1px solid var(--color-border);
+        border-radius: 999px;
+        background: var(--color-surface-alt);
+    }
+
+    .theme-switch button {
+        border: 0;
+        background: transparent;
+        color: var(--color-muted);
+        font: inherit;
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 0.55rem 0.8rem;
+        border-radius: 999px;
+        cursor: pointer;
+        min-height: 44px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 42px;
-        height: 42px;
-        border: 1px solid var(--color-border);
-        border-radius: 999px;
-        background: transparent;
-        cursor: pointer;
-        color: var(--color-text);
         transition:
             background var(--transition),
-            transform var(--transition);
+            color var(--transition);
     }
 
-    #theme-toggle:hover {
-        transform: translateY(-1px);
-        background: var(--color-surface-alt);
+    .theme-switch button.is-active {
+        background: var(--color-surface);
+        color: var(--color-text);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .theme-switch button:hover:not(.is-active) {
+        color: var(--color-primary);
+    }
+
+    @media (max-width: 480px) {
+        .theme-switch button {
+            font-size: 0.72rem;
+            padding: 0.4rem 0.55rem;
+            min-height: 40px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .logo {
+            min-width: 0;
+            gap: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .logo img {
+            width: 32px;
+            height: 32px;
+            flex-shrink: 0;
+        }
+
+        .logo span {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     }
 </style>

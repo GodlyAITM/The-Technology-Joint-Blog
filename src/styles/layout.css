@@ -4,8 +4,20 @@
   box-sizing: border-box;
 }
 
+html {
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
+  overflow-x: clip;
+}
+
+/* Never let media blow out the viewport on small screens */
+img,
+video {
+  max-width: 100%;
+  height: auto;
 }
 
 .container {
@@ -20,4 +32,10 @@ body {
 
 section {
   padding-block: var(--space-7);
+}
+
+@media (max-width: 640px) {
+  section {
+    padding-block: var(--space-5);
+  }
 }

@@ -1,20 +1,26 @@
 /**
  * Client-side GitHub API helpers for the Studio workspace.
  *
- * The Studio is a fully static site (GitHub Pages), so it has no backend.
- * Saving/publishing therefore uses the GitHub Contents API directly from the
- * browser with a personal access token. Pushing to `main` triggers the
- * existing GitHub Actions deploy, which rebuilds the live site.
+ * Two transport modes:
  *
- * NOTE: the token is stored in localStorage. That is acceptable for this
- * private single-editor tool, but never expose the Studio to untrusted users.
+ *  1. OAuth mode (recommended, production): when `PUBLIC_STUDIO_API_URL`
+ *     is set, all GitHub calls are proxied through the Studio API worker
+ *     (/api/gh/*). The worker holds the GitHub access token server-side
+ *     and authenticates via an HttpOnly session cookie, so no token ever
+ *     lives in the browser. Session state is checked with credentials so
+ *     the cookie is sent automatically.
+ *
+ *  2. Legacy PAT mode (local dev / no worker): falls back to the GitHub
+ *     Contents API directly from the browser using a personal access
+ *     token stored in localStorage. Kept for local workflows without a
+ *     deployed worker.
  */
 
 export interface StudioConfig {
     owner: string;
     repo: string;
     branch: string;
-    token: string;
+    token?: string;
 }
 
 export interface ArticleData {
@@ -42,15 +48,26 @@ export const DEFAULT_REPO = "The-Technology-Joint-Blog";
 export const DEFAULT_BRANCH = "main";
 
 /* ------------------------------------------------------------------ */
-/* Config / token storage                                              */
+/* Transport config                                                    */
 /* ------------------------------------------------------------------ */
+
+/** Base URL of the Studio OAuth worker (e.g. https://ttj-studio-api.workers.dev). */
+export function getApiBase(): string {
+    const raw = import.meta.env.PUBLIC_STUDIO_API_URL as string | undefined;
+    return (raw || "").replace(/\/$/, "");
+}
+
+/** True when the OAuth worker is configured (production OAuth mode). */
+export function hasApi(): boolean {
+    return Boolean(getApiBase());
+}
 
 export function getStudioConfig(): StudioConfig | null {
     try {
         const raw = window.localStorage.getItem(STORAGE_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw) as Partial<StudioConfig>;
-        if (!parsed.token || !parsed.owner || !parsed.repo) return null;
+        if (!parsed.owner || !parsed.repo) return null;
         return {
             owner: parsed.owner,
             repo: parsed.repo,
@@ -71,6 +88,55 @@ export function hasStudioConfig(): boolean {
 }
 
 /* ------------------------------------------------------------------ */
+/* Session (OAuth mode)                                                */
+/* ------------------------------------------------------------------ */
+
+export interface StudioSession {
+    authenticated: boolean;
+    user?: { login: string; name?: string; avatar_url?: string } | null;
+    scope?: string;
+}
+
+/** Ask the worker whether the current browser has a valid session. */
+export async function getSession(): Promise<StudioSession | null> {
+    const apiBase = getApiBase();
+    if (!apiBase) return null;
+    try {
+        const response = await fetch(`${apiBase}/api/auth/session`, {
+            credentials: "include",
+            headers: { Accept: "application/json" },
+        });
+        if (!response.ok) return { authenticated: false };
+        return (await response.json()) as StudioSession;
+    } catch {
+        return { authenticated: false };
+    }
+}
+
+/** Sign out of the worker session. */
+export async function signOut(): Promise<void> {
+    const apiBase = getApiBase();
+    if (!apiBase) return;
+    try {
+        await fetch(`${apiBase}/api/auth/logout`, {
+            method: "POST",
+            credentials: "include",
+        });
+    } catch {
+        // best-effort — local redirect still happens
+    }
+}
+
+/** URL to start the GitHub OAuth flow, returning to `next` afterwards. */
+export function getLoginUrl(next?: string): string {
+    const apiBase = getApiBase();
+    if (!apiBase) return "/studio/login";
+    const params = new URLSearchParams();
+    if (next) params.set("next", next);
+    return `${apiBase}/api/auth/login${params.size ? `?${params.toString()}` : ""}`;
+}
+
+/* ------------------------------------------------------------------ */
 /* Low-level API call                                                  */
 /* ------------------------------------------------------------------ */
 
@@ -80,15 +146,52 @@ interface GitHubContentResult {
     message?: string;
 }
 
+class GitHubApiError extends Error {
+    status: number;
+    constructor(message: string, status: number) {
+        super(message);
+        this.status = status;
+    }
+}
+
 async function api<T = GitHubContentResult>(
     path: string,
     init?: RequestInit,
     config?: StudioConfig,
 ): Promise<T> {
+    const apiBase = getApiBase();
+
+    if (apiBase) {
+        // OAuth mode — proxy through the worker
+        const response = await fetch(`${apiBase}/api/gh${path}`, {
+            ...init,
+            credentials: "include",
+            headers: {
+                Accept: "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+                ...(init?.headers ?? {}),
+            },
+        });
+
+        if (!response.ok) {
+            let message = `GitHub API ${response.status} ${response.statusText}`;
+            try {
+                const body = (await response.json()) as { message?: string };
+                if (body?.message) message = body.message;
+            } catch {
+                // keep the default message
+            }
+            throw new GitHubApiError(message, response.status);
+        }
+
+        return response.json() as Promise<T>;
+    }
+
+    // Legacy PAT mode — direct GitHub API
     const cfg = config ?? getStudioConfig();
-    if (!cfg) {
+    if (!cfg?.token) {
         throw new Error(
-            "GitHub is not connected. Open Studio → Settings and save your token.",
+            "GitHub is not connected. Sign in with GitHub, or add a token in Studio → Settings.",
         );
     }
 
@@ -103,8 +206,6 @@ async function api<T = GitHubContentResult>(
     });
 
     if (!response.ok) {
-        // Keep the HTTP status in the message — callers (e.g. getFile's
-        // "file not found" detection) rely on the "GitHub API 404" prefix.
         let message = `GitHub API ${response.status} ${response.statusText}`;
         try {
             const body = (await response.json()) as { message?: string };
@@ -136,13 +237,13 @@ export async function getFile(
     options: { config?: StudioConfig; decode?: boolean } = {},
 ): Promise<StudioFile | null> {
     const cfg = options.config ?? getStudioConfig();
-    if (!cfg) return null;
+    if (!cfg && !hasApi()) return null;
 
     try {
         const data = await api<GitHubContentResult>(
-            `/repos/${cfg.owner}/${cfg.repo}/contents/${path}?ref=${encodeURIComponent(cfg.branch)}`,
+            `/repos/${cfg?.owner ?? DEFAULT_OWNER}/${cfg?.repo ?? DEFAULT_REPO}/contents/${path}?ref=${encodeURIComponent(cfg?.branch ?? DEFAULT_BRANCH)}`,
             undefined,
-            cfg,
+            cfg ?? undefined,
         );
         if (!data.sha) return null;
 
@@ -155,6 +256,8 @@ export async function getFile(
                     : undefined,
         };
     } catch (err) {
+        // Structured 404 (OAuth mode) or legacy message prefix (PAT mode)
+        if (err instanceof GitHubApiError && err.status === 404) return null;
         if (err instanceof Error && /^GitHub API 404/.test(err.message)) {
             return null;
         }
@@ -173,35 +276,51 @@ export async function putFile(
     options: { sha?: string; base64?: boolean; config?: StudioConfig } = {},
 ): Promise<GitHubContentResult> {
     const cfg = options.config ?? getStudioConfig();
-    if (!cfg) {
-        throw new Error(
-            "GitHub is not connected. Open Studio → Settings and save your token.",
-        );
-    }
 
     const body: Record<string, string> = {
         message,
         content: options.base64 ? content : stringToBase64(content),
-        branch: cfg.branch,
+        branch: cfg?.branch ?? DEFAULT_BRANCH,
     };
     if (options.sha) body.sha = options.sha;
 
     return api<GitHubContentResult>(
-        `/repos/${cfg.owner}/${cfg.repo}/contents/${path}`,
+        `/repos/${cfg?.owner ?? DEFAULT_OWNER}/${cfg?.repo ?? DEFAULT_REPO}/contents/${path}`,
         { method: "PUT", body: JSON.stringify(body) },
-        cfg,
+        cfg ?? undefined,
     );
 }
 
-/** Verify the token + repo are reachable and writable. */
+/** Verify connectivity: OAuth session (worker) or token+repo (legacy). */
 export async function testGitHubConnection(
-    config: StudioConfig,
+    config?: StudioConfig,
 ): Promise<{ ok: boolean; message: string }> {
+    const apiBase = getApiBase();
+
+    if (apiBase) {
+        const session = await getSession();
+        if (!session?.authenticated) {
+            return {
+                ok: false,
+                message: "Not signed in. Sign in with GitHub to connect the Studio.",
+            };
+        }
+        return {
+            ok: true,
+            message: `Connected as ${session.user?.login ?? "GitHub user"} (via GitHub OAuth).`,
+        };
+    }
+
+    const cfg = config ?? getStudioConfig();
+    if (!cfg?.token) {
+        return { ok: false, message: "Add a GitHub token to test the connection." };
+    }
+
     try {
         const data = await api<{
             full_name?: string;
             permissions?: { push?: boolean };
-        }>(`/repos/${config.owner}/${config.repo}`, undefined, config);
+        }>(`/repos/${cfg.owner}/${cfg.repo}`, undefined, cfg ?? undefined);
 
         if (!data.full_name) {
             return { ok: false, message: "Repository not found." };
@@ -220,7 +339,7 @@ export async function testGitHubConnection(
                 : "write access could not be verified";
         return {
             ok: true,
-            message: `Connected to ${data.full_name} (branch: ${config.branch}) — ${access}.`,
+            message: `Connected to ${data.full_name} (branch: ${cfg.branch}) — ${access}.`,
         };
     } catch (err) {
         return {

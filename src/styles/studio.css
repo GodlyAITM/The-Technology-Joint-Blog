@@ -5,6 +5,11 @@
    site's existing design tokens (--color-*, --radius-*, --shadow-*).
    ============================================================ */
 
+/* The [hidden] attribute must always win over display utilities. */
+[hidden] {
+    display: none !important;
+}
+
 /* ---- Page headers ---- */
 
 .studio-header {

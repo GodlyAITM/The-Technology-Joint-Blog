@@ -1,0 +1,18 @@
+name = "ttj-studio-api"
+main = "worker/index.js"
+compatibility_date = "2025-06-01"
+workers_dev = true
+
+# Non-secret defaults (override in dashboard/CI if needed)
+[vars]
+SITE_ORIGIN = "https://godlyaitm.github.io"
+SITE_BASE = "/The-Technology-Joint-Blog"
+DEFAULT_OWNER = "godlyaitm"
+DEFAULT_REPO = "The-Technology-Joint-Blog"
+DEFAULT_BRANCH = "main"
+
+# --- SECRETS (set with `wrangler secret put` — NEVER commit) ---
+# GITHUB_CLIENT_ID     -> GitHub OAuth App client id
+# GITHUB_CLIENT_SECRET -> GitHub OAuth App client secret
+# COOKIE_SECRET        -> long random string used to encrypt the session cookie
+#   e.g. `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`

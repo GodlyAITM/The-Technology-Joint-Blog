@@ -11,101 +11,201 @@ const navItems = [
 const currentPath = Astro.url.pathname;
 ---
 
-<nav aria-label="Main Navigation">
-    <ul>
-        {
-            navItems.map((item) => (
-                <li>
-                    <a
-                        href={item.href}
-                        class={currentPath === item.href || currentPath === item.href.replace(/\/$/, '') ? "active" : ""}
-                    >
-                        {item.label}
-                    </a>
-                </li>
-            ))
-        }
+<nav class="site-nav" aria-label="Main Navigation">
+    <button
+        class="nav-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="site-nav-links"
+        aria-label="Toggle menu"
+    >
+        <span class="nav-toggle__bar"></span>
+        <span class="nav-toggle__bar"></span>
+        <span class="nav-toggle__bar"></span>
+    </button>
+
+    <ul id="site-nav-links" class="nav-links">
+        {navItems.map((item) => (
+            <li>
+                <a
+                    href={item.href}
+                    class={
+                        currentPath === item.href ||
+                        currentPath === item.href.replace(/\/$/, "")
+                            ? "active"
+                            : ""
+                    }
+                >
+                    {item.label}
+                </a>
+            </li>
+        ))}
     </ul>
 </nav>
 
+<script>
+    const nav = document.querySelector<HTMLElement>(".site-nav");
+    const toggle = document.querySelector<HTMLButtonElement>(".nav-toggle");
+
+    function setOpen(open: boolean) {
+        nav?.classList.toggle("is-open", open);
+        toggle?.setAttribute("aria-expanded", String(open));
+    }
+
+    toggle?.addEventListener("click", () => {
+        setOpen(!nav?.classList.contains("is-open"));
+    });
+
+    // Close after tapping a link (mobile) or pressing Escape.
+    document
+        .querySelectorAll<HTMLAnchorElement>(".nav-links a")
+        .forEach((link) => link.addEventListener("click", () => setOpen(false)));
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") setOpen(false);
+    });
+</script>
+
 <style>
-    nav {
+    .site-nav {
         display: flex;
-
         align-items: center;
     }
 
-    ul {
-        display: flex;
-
+    /* Hamburger — hidden on desktop */
+    .nav-toggle {
+        display: none;
+        flex-direction: column;
+        justify-content: center;
         align-items: center;
+        gap: 5px;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: 1px solid var(--color-border);
+        border-radius: 999px;
+        background: transparent;
+        cursor: pointer;
+        transition:
+            background var(--transition),
+            border-color var(--transition);
+    }
 
+    .nav-toggle:hover {
+        background: var(--color-surface-alt);
+        border-color: var(--color-primary);
+    }
+
+    .nav-toggle__bar {
+        display: block;
+        width: 18px;
+        height: 2px;
+        border-radius: 999px;
+        background: var(--color-text);
+        transition:
+            transform var(--transition),
+            opacity var(--transition);
+    }
+
+    .nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(1) {
+        transform: translateY(7px) rotate(45deg);
+    }
+
+    .nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(2) {
+        opacity: 0;
+    }
+
+    .nav-toggle[aria-expanded="true"] .nav-toggle__bar:nth-child(3) {
+        transform: translateY(-7px) rotate(-45deg);
+    }
+
+    .nav-links {
+        display: flex;
+        align-items: center;
         gap: 2rem;
-
         list-style: none;
-
         margin: 0;
-
         padding: 0;
     }
 
-    li {
+    .nav-links li {
         margin: 0;
-
         padding: 0;
     }
 
-    a {
+    .nav-links a {
         position: relative;
-
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
         text-decoration: none;
-
         font-weight: 600;
-
         color: var(--color-text);
-
-        transition: 0.25s ease;
-
+        transition: color 0.25s ease;
         padding: 0.35rem 0;
     }
 
-    a:hover {
+    .nav-links a:hover {
         color: var(--color-primary);
     }
 
-    a.active {
+    .nav-links a.active {
         color: var(--color-primary);
     }
 
-    a.active::after {
+    .nav-links a.active::after {
         content: "";
-
         position: absolute;
-
         left: 0;
-
         bottom: -6px;
-
         width: 100%;
-
         height: 2px;
-
         background: var(--color-primary);
-
         border-radius: 999px;
     }
 
     @media (max-width: 768px) {
-        ul {
-            gap: 1rem;
-
-            flex-wrap: wrap;
-
-            justify-content: flex-end;
+        .site-nav {
+            margin-left: auto;
         }
 
-        a {
-            font-size: 0.95rem;
+        .nav-toggle {
+            display: inline-flex;
+        }
+
+        .nav-links {
+            display: none;
+            position: absolute;
+            top: calc(100% + 0.75rem);
+            left: 0;
+            right: 0;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.25rem;
+            padding: 0.75rem;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            z-index: 1000;
+        }
+
+        .site-nav.is-open .nav-links {
+            display: flex;
+        }
+
+        .nav-links a {
+            min-height: 48px;
+            padding: 0.75rem 0.85rem;
+            border-radius: var(--radius-md);
+        }
+
+        .nav-links a:hover {
+            background: var(--color-primary-soft);
+        }
+
+        .nav-links a.active::after {
+            display: none;
         }
     }
 </style>

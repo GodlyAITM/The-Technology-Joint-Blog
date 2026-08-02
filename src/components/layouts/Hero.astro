@@ -39,13 +39,25 @@ const base = import.meta.env.BASE_URL;
         font-weight: 700;
 
         letter-spacing: 0.08em;
+    }    .buttons {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
     }
 
-    .buttons {
-        display: flex;
+    @media (max-width: 640px) {
+        .hero {
+            padding: 4rem 0;
+        }
 
-        gap: 1rem;
+        .buttons {
+            flex-direction: column;
+            align-items: stretch;
+        }
 
-        margin-top: 2rem;
+        .buttons a {
+            width: 100%;
+        }
     }
 </style>
