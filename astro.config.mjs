@@ -18,11 +18,11 @@ const isProduction =
     process.argv.includes("check");
 
 export default defineConfig({
-    site: "https://godlyaitm.github.io/the-technology-joint-blog",
+    site: "https://godlyaitm.github.io/The-Technology-Joint-Blog",
 
     // GitHub Pages needs the base path in the deployed build; local dev must
     // run at the root so Keystatic's admin UI and API resolve correctly.
-    base: isProduction ? "/the-technology-joint-blog/" : "/",
+    base: isProduction ? "/The-Technology-Joint-Blog/" : "/",
 
     integrations: [
         sitemap(),

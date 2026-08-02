@@ -152,7 +152,7 @@ const websiteSchema = {
                     window.localStorage.getItem("studio-auth") ===
                     "authenticated";
 
-                const base = window.location.pathname.startsWith(
+                const base = window.location.pathname.includes(
                     "/The-Technology-Joint-Blog",
                 )
                     ? "/The-Technology-Joint-Blog"
