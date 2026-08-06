@@ -17,6 +17,11 @@
  *   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, COOKIE_SECRET
  * Vars (wrangler.toml [vars]):
  *   SITE_ORIGIN, SITE_BASE, DEFAULT_OWNER, DEFAULT_REPO, DEFAULT_BRANCH
+ *
+ * Security model: the session cookie is NON-persistent (session-only, no
+ * Max-Age) — it is discarded when the browser closes. The studio always asks
+ * for a fresh GitHub login on every new visit; there is no remembered-device
+ * or persisted-session behavior.
  */
 
 const GH_AUTHORIZE = "https://github.com/login/oauth/authorize";
@@ -24,7 +29,13 @@ const GH_TOKEN = "https://github.com/login/oauth/access_token";
 const GH_API = "https://api.github.com";
 const SESSION_COOKIE = "ttj_studio_session";
 const STATE_COOKIE = "ttj_studio_state";
-const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
+// The session is intentionally NON-persistent: the cookie is written WITHOUT
+// Max-Age/Expires, so it is a session cookie that the browser discards when
+// the browser is closed. Every new visit therefore starts unauthenticated and
+// requires a fresh GitHub login — there is no "remembered device".
+// `exp` below is only a server-side backstop for a stale cookie; it does NOT
+// make the session persist across browser sessions.
+const SESSION_TTL_SECONDS = 24 * 60 * 60; // 24h server-side backstop
 
 export default {
   async fetch(request, env) {
@@ -138,7 +149,13 @@ async function handleCallback(request, env) {
   const headers = new Headers({
     Location: nextTarget || defaultStudioUrl(env),
     "Set-Cookie": [
-      `${SESSION_COOKIE}=${encrypted}; Path=/; Secure; SameSite=Lax; Max-Age=${SESSION_TTL_SECONDS}; HttpOnly`,
+      // Session cookie: no Max-Age (cleared when the browser closes, so every
+      // fresh visit must re-authenticate) AND SameSite=None; Secure because
+      // the studio is served from the static site origin (e.g. github.io)
+      // while this worker lives on a different origin (workers.dev) — a
+      // cross-site credentialed fetch would never carry a SameSite=Lax
+      // cookie, which previously made the deployed studio loop back to login.
+      `${SESSION_COOKIE}=${encrypted}; Path=/; Secure; SameSite=None; HttpOnly`,
       `${STATE_COOKIE}=; Path=/; Secure; SameSite=Lax; Max-Age=0; HttpOnly`,
     ].join(", "),
   });

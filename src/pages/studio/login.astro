@@ -91,7 +91,9 @@ const hasOAuth = Boolean(apiBase);
         if (form && status) {
             form.addEventListener("submit", (event) => {
                 event.preventDefault();
-                window.localStorage.setItem("studio-auth", "authenticated");
+                // sessionStorage only — cleared when the browser/tab session
+                // ends, so every fresh visit asks to sign in again.
+                window.sessionStorage.setItem("studio-auth", "authenticated");
                 window.location.assign(`${base}/studio`);
             });
         }

@@ -1,18 +1,12 @@
 ---
-import { getCollection, type CollectionEntry } from "astro:content";
-
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Header from "../components/layouts/Header.astro";
 import Footer from "../components/layouts/Footer.astro";
 import PageHero from "../components/layouts/PageHero.astro";
 import ArticleCard from "../components/layouts/ArticleCard.astro";
+import { getPublishedArticles } from "../lib/articles";
 
-const articles = (
-    await getCollection(
-        "articles",
-        (article: CollectionEntry<"articles">) => !article.data.draft,
-    )
-).sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+const articles = await getPublishedArticles();
 ---
 
 <BaseLayout

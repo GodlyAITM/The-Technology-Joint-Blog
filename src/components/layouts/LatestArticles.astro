@@ -1,17 +1,9 @@
 ---
-import { getCollection, type CollectionEntry } from "astro:content";
-
 import SectionHeading from "./SectionHeading.astro";
 import ArticleCard from "./ArticleCard.astro";
+import { getLatestArticles } from "../../lib/articles";
 
-const latestArticles = (
-    await getCollection(
-        "articles",
-        (article: CollectionEntry<"articles">) => !article.data.draft,
-    )
-)
-    .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
-    .slice(0, 6);
+const latestArticles = await getLatestArticles(6);
 ---
 
 <section class="latest">

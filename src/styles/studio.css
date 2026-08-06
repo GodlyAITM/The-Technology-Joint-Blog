@@ -193,6 +193,15 @@
     color: var(--color-warning);
 }
 
+.studio-badge--scheduled {
+    background: color-mix(
+        in srgb,
+        var(--color-accent) 16%,
+        var(--color-surface)
+    );
+    color: var(--color-accent);
+}
+
 .studio-badge--featured {
     background: color-mix(
         in srgb,

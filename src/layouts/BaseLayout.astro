@@ -19,6 +19,10 @@ const {
 } = Astro.props;
 
 const siteBase = import.meta.env.BASE_URL;
+const siteBaseClean = siteBase.replace(/\/$/, "");
+const studioApiBase = (
+    import.meta.env.PUBLIC_STUDIO_API_URL || ""
+).replace(/\/$/, "");
 const googleSiteVerification =
     import.meta.env.GOOGLE_SITE_VERIFICATION?.trim() ||
     "W-kyMHdnvxYxUUuNKa1lUe9CFY2doViJm3duZAbr32E";
@@ -156,42 +160,47 @@ const websiteSchema = {
         <slot name="head" />
     </head>
 
-    <body>
+    <body
+        data-site-base={siteBaseClean}
+        data-studio-api={studioApiBase}
+    >
         <slot />
 
         <script is:inline>
             (function () {
-                const path = window.location.pathname;
-                const isStudioRoute = path.startsWith("/studio");
-                const isLoginRoute = path === "/studio/login";
+                // NOTE: import.meta.env is NOT available inside is:inline
+                // scripts (it would throw "Cannot use 'import.meta' outside a
+                // module"), so the values are read from data attributes set
+                // on <body> from the component frontmatter at build time.
+                var body = document.body;
+                var base = (body && body.getAttribute("data-site-base")) || "";
+                var apiBase =
+                    (body && body.getAttribute("data-studio-api")) || "";
+
+                var path = window.location.pathname;
+                var isStudioRoute = /\/studio(\/|$)/.test(path);
+                var isLoginRoute = path === base + "/studio/login";
 
                 if (!isStudioRoute) return;
-
-                const base = window.location.pathname.includes(
-                    "/The-Technology-Joint-Blog",
-                )
-                    ? "/The-Technology-Joint-Blog"
-                    : "";
-                const apiBase = (
-                    import.meta.env.PUBLIC_STUDIO_API_URL || ""
-                ).replace(/\/$/, "");
 
                 function handleAuth(authenticated) {
                     if (isLoginRoute) {
                         if (authenticated) {
-                            window.location.replace(`${base}/studio`);
+                            window.location.replace(base + "/studio");
                         }
                         return;
                     }
                     if (!authenticated) {
-                        window.location.replace(`${base}/studio/login`);
+                        window.location.replace(base + "/studio/login");
                     }
                 }
 
                 if (!apiBase) {
-                    // Local-dev fallback: lightweight session stored in the browser
-                    const authenticated =
-                        window.localStorage.getItem("studio-auth") ===
+                    // Local-dev fallback: lightweight session stored in
+                    // sessionStorage ONLY, so it is cleared when the browser/
+                    // tab session ends and every visit asks to sign in again.
+                    var authenticated =
+                        window.sessionStorage.getItem("studio-auth") ===
                         "authenticated";
                     handleAuth(authenticated);
                     return;
@@ -199,14 +208,16 @@ const websiteSchema = {
 
                 // OAuth mode: ask the worker for the session (HttpOnly cookie
                 // is sent automatically via credentials: include).
-                fetch(`${apiBase}/api/auth/session`, {
+                fetch(apiBase + "/api/auth/session", {
                     credentials: "include",
                 })
-                    .then((res) => res.json())
-                    .then((data) =>
-                        handleAuth(Boolean(data && data.authenticated)),
-                    )
-                    .catch(() => {
+                    .then(function (res) {
+                        return res.json();
+                    })
+                    .then(function (data) {
+                        handleAuth(Boolean(data && data.authenticated));
+                    })
+                    .catch(function () {
                         handleAuth(false);
                     });
             })();

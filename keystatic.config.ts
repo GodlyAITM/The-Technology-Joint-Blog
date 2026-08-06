@@ -43,8 +43,11 @@ export default config({
                     multiline: true,
                 }),
 
-                pubDate: fields.date({
-                    label: "Published Date",
+                pubDate: fields.datetime({
+                    label: "Published Date & Time",
+                    description:
+                        "Set a future date/time to schedule the article — it goes live automatically after a rebuild passes this moment.",
+                    defaultValue: { kind: "now" },
                 }),
 
                 updatedDate: fields.date({

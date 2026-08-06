@@ -1,15 +1,9 @@
 ---
-import { getCollection, type CollectionEntry } from "astro:content";
 import SectionHeading from "./SectionHeading.astro";
 import ArticleCard from "./ArticleCard.astro";
+import { getFeaturedArticles } from "../../lib/articles";
 
-const featuredArticles = (
-    await getCollection(
-        "articles",
-        (article: CollectionEntry<"articles">) =>
-            !article.data.draft && article.data.featured,
-    )
-).sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+const featuredArticles = await getFeaturedArticles();
 ---
 
 {

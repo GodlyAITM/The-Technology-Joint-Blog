@@ -1,0 +1,94 @@
+name: Scheduled Publish & Notify
+
+on:
+  schedule:
+    # Hourly — publishes any scheduled article whose pubDate has passed, and
+    # emails a reminder ~24h before articles whose pubDate is approaching.
+    - cron: "0 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # commit the notification tracking file
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  # ------------------------------------------------------------------
+  # 1) Email notifications (~24h before a scheduled article goes live)
+  # ------------------------------------------------------------------
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Send scheduled-article notifications
+        run: node .github/scripts/notify-scheduled.mjs
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+          RESEND_FROM: ${{ secrets.RESEND_FROM }}
+
+      - name: Commit notification tracking file
+        # The tracking file (.github/scheduled/notified.json) guarantees each
+        # article is emailed exactly once. "[skip ci]" prevents this push from
+        # re-triggering the deploy workflow.
+        run: |
+          if [ -n "$(git status --porcelain .github/scheduled/notified.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/scheduled/notified.json
+            git commit -m "[skip ci] Studio: record sent article notifications"
+            git push
+          else
+            echo "No tracking changes to commit."
+          fi
+
+  # ------------------------------------------------------------------
+  # 2) Rebuild + redeploy (publishes scheduled articles automatically)
+  # ------------------------------------------------------------------
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
+          PUBLIC_STUDIO_API_URL: ${{ vars.PUBLIC_STUDIO_API_URL }}
+
+      - name: Upload Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

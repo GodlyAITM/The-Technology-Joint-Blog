@@ -71,7 +71,7 @@ const navItems = [
                 // best-effort — local redirect still happens
             }
         }
-        window.localStorage.removeItem("studio-auth");
+        window.sessionStorage.removeItem("studio-auth");
         const base = import.meta.env.BASE_URL.replace(/\/$/, "");
         window.location.assign(`${base}/studio/login`);
     });

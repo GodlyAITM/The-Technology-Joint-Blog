@@ -2,6 +2,34 @@ import { getCollection, type CollectionEntry } from "astro:content";
 
 export type Article = CollectionEntry<"articles">;
 
+/**
+ * An article is publicly visible only when it is NOT a draft AND its
+ * scheduled publish date/time has already passed. Future-dated articles
+ * (scheduled in the Studio) stay hidden until a later rebuild picks them up.
+ */
+export function isPublished(
+    article: Article,
+    now: Date = new Date(),
+): boolean {
+    return !article.data.draft && article.data.pubDate.getTime() <= now.getTime();
+}
+
+/**
+ * Studio status: draft, scheduled (draft=false but pubDate in the future),
+ * or published (draft=false and pubDate has passed).
+ */
+export type ArticleStatus = "draft" | "scheduled" | "published";
+
+export function getArticleStatus(
+    article: Article,
+    now: Date = new Date(),
+): ArticleStatus {
+    if (article.data.draft) return "draft";
+    return article.data.pubDate.getTime() > now.getTime()
+        ? "scheduled"
+        : "published";
+}
+
 function sortNewestFirst(articles: Article[]): Article[] {
     return [...articles].sort(
         (a, b) =>
@@ -11,10 +39,7 @@ function sortNewestFirst(articles: Article[]): Article[] {
 }
 
 export async function getPublishedArticles(): Promise<Article[]> {
-    const articles = await getCollection(
-        "articles",
-        ({ data }) => !data.draft,
-    );
+    const articles = await getCollection("articles", isPublished);
 
     return sortNewestFirst(articles);
 }

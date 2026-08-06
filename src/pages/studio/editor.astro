@@ -18,6 +18,13 @@ const categories = [
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
+// pubDate supports time-of-day (scheduling), formatted for <input
+// type="datetime-local"> in the visitor's local timezone.
+function toDateTimeLocal(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 const isEditing = Boolean(sourcePost) && !isDuplicate;
 
 const article = sourcePost
@@ -25,7 +32,7 @@ const article = sourcePost
           slug: sourcePost.id,
           title: sourcePost.data.title,
           description: sourcePost.data.description,
-          pubDate: sourcePost.data.pubDate.toISOString().slice(0, 10),
+          pubDate: toDateTimeLocal(sourcePost.data.pubDate),
           updatedDate:
               sourcePost.data.updatedDate?.toISOString().slice(0, 10) || "",
           author: sourcePost.data.author,
@@ -46,7 +53,7 @@ const article = sourcePost
           slug: "",
           title: "",
           description: "",
-          pubDate: new Date().toISOString().slice(0, 10),
+          pubDate: toDateTimeLocal(new Date()),
           updatedDate: "",
           author: authors[0]?.name ?? "Israel Alabi",
           category: "",
@@ -176,9 +183,14 @@ const allSlugs = posts.map((post) => post.id);
                         <input
                             id="field-pubdate"
                             name="pubDate"
-                            type="date"
+                            type="datetime-local"
                             value={article.pubDate}
                         />
+                        <p class="studio-hint">
+                            Set a future date/time to schedule this article. It
+                            goes live automatically after the next scheduled
+                            site rebuild passes this moment.
+                        </p>
                     </div>
                     <div class="studio-field">
                         <label for="field-updated">
@@ -523,11 +535,26 @@ const allSlugs = posts.map((post) => post.id);
         const arrayValues: string[] = [];
 
         for (const line of lines) {
-            // Block scalar (>-)
+            // Block scalar (>- folded, or | literal)
             if (blockScalar) {
                 const indent = line.match(/^(\s*)/)?.[1] ?? "";
                 if (indent.length >= 2 || line.trim() === "") {
-                    fm[currentKey] = (fm[currentKey] || "") + (fm[currentKey] ? "\n" : "") + line.trimStart();
+                    const prev = String(fm[currentKey] ?? "");
+                    const trimmed = line.trimStart();
+                    if (blockScalar === "|") {
+                        // literal — keep newlines
+                        fm[currentKey] = prev + (prev ? "\n" : "") + trimmed;
+                    } else {
+                        // folded — a single newline becomes a space, a blank
+                        // line becomes a real newline
+                        if (line.trim() === "") {
+                            fm[currentKey] = prev + "\n";
+                        } else if (prev === "" || prev.endsWith("\n")) {
+                            fm[currentKey] = prev + trimmed;
+                        } else {
+                            fm[currentKey] = prev + " " + trimmed;
+                        }
+                    }
                     continue;
                 } else {
                     blockScalar = "";
@@ -580,6 +607,24 @@ const allSlugs = posts.map((post) => post.id);
 
     function unquote(s: string): string {
         return s.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
+    }
+
+    /**
+     * Normalize a YAML/ISO pubDate value into a format <input
+     * type="datetime-local"> accepts (YYYY-MM-DDTHH:mm in local time).
+     * Date-only values (existing articles) map to midnight local time so the
+     * exact calendar date is preserved in the visitor's timezone (and the
+     * value is still accepted by the datetime-local input).
+     */
+    function normalizeDateTime(value: unknown): string {
+        const str = String(value ?? "").trim();
+        if (!str) return "";
+        // Date-only (existing articles): treat as midnight local time.
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return `${str}T00:00`;
+        const date = new Date(str);
+        if (Number.isNaN(date.getTime())) return str;
+        const pad = (n: number) => String(n).padStart(2, "0");
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     }
 
     /**
@@ -649,7 +694,7 @@ const allSlugs = posts.map((post) => post.id);
 
             setValue("field-title", fm.title);
             setValue("field-description", fm.description);
-            setValue("field-pubdate", fm.pubDate);
+            setValue("field-pubdate", normalizeDateTime(fm.pubDate));
             setValue("field-updated", fm.updatedDate);
             setValue("field-category", fm.category);
             setValue("field-tags", Array.isArray(fm.tags) ? fm.tags.join(", ") : fm.tags);
@@ -698,6 +743,9 @@ const allSlugs = posts.map((post) => post.id);
                 const slugField = document.getElementById("field-slug") as HTMLInputElement | null;
                 if (slugField) {
                     slugField.value = `${urlSlug}-copy`;
+                    // The slug is set programmatically — mark it as edited so
+                    // typing in the title does NOT overwrite the -copy slug.
+                    slugEdited = true;
                 }
             } else {
                 // Hide the slug field container when editing an existing article
@@ -798,16 +846,20 @@ const allSlugs = posts.map((post) => post.id);
         removeHeroBtn?.removeAttribute("hidden");
     }
 
-    const setStatus = (
+    // NOTE: declared as a hoisted function (not a const arrow) on purpose —
+    // loadArticleFromUrl() runs at module top level and calls setStatus()
+    // before its first await, which would hit the temporal dead zone and
+    // crash article loading if this were a const declared later in the file.
+    function setStatus(
         message: string,
         kind: "info" | "success" | "error" = "info",
-    ) => {
+    ) {
         if (!status) return;
         status.className = "studio-status";
         if (kind === "success") status.classList.add("studio-status--success");
         if (kind === "error") status.classList.add("studio-status--error");
         status.textContent = message;
-    };
+    }
 
     /* ---- Save / publish ---- */
     const saveArticle = async (action: "save" | "publish") => {

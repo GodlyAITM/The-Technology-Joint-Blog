@@ -1,0 +1,17 @@
+Another astro dev server is already running.
+
+  URL:  http://127.0.0.1:4321
+  PID:  2704
+
+Run `astro dev stop` to stop it, or use `astro dev --force` to replace it.
+  [1mLocation:[22m
+    [4mC:\Users\GodlyAITM\Desktop\the-technology-joint-blog\node_modules\astro\dist\cli\dev\index.js:153:13[24m
+  [1mStack trace:[22m
+[2m    at dev (file:///C:/Users/GodlyAITM/Desktop/the-technology-joint-blog/node_modules/astro/dist/cli/dev/index.js:153:13)
+    at async cli (file:///C:/Users/GodlyAITM/Desktop/the-technology-joint-blog/node_modules/astro/dist/cli/index.js:220:5)[22m
+m [optimizer] scanning dependencies...
+[2m23:13:06[22m [34m[vite][39m [optimizer] bundling dependencies...
+[2m23:14:39[22m [34m[200][39m / [2m3512ms[22m
+[2m23:14:39[22m [34m[200][39m / [2m3507ms[22m
+[2m23:14:54[22m [34m[200][39m /studio/editor [2m259ms[22m
+[2m23:15:01[22m [34m[watch][39m local-editor.html

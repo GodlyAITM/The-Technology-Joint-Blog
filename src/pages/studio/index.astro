@@ -2,17 +2,26 @@
 import { getCollection } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import StudioShell from "../../components/studio/StudioShell.astro";
+import { getArticleStatus } from "../../lib/articles";
 
 const posts = await getCollection("articles");
-const publishedCount = posts.filter((post) => !post.data.draft).length;
-const draftCount = posts.filter((post) => post.data.draft).length;
+const publishedCount = posts.filter(
+    (post) => getArticleStatus(post) === "published",
+).length;
+const draftCount = posts.filter(
+    (post) => getArticleStatus(post) === "draft",
+).length;
+const scheduledCount = posts.filter(
+    (post) => getArticleStatus(post) === "scheduled",
+).length;
 const recentPosts = posts
     .slice()
     .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
     .slice(0, 5)
     .map((post) => ({
         title: post.data.title,
-        status: post.data.draft ? "draft" : "published",
+        status: getArticleStatus(post),
+        pubDate: post.data.pubDate.toISOString(),
         updated:
             post.data.updatedDate?.toLocaleDateString("en-US", {
                 month: "short",
@@ -80,6 +89,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                 <strong>{publishedCount}</strong>
             </article>
             <article class="studio-metric">
+                <p class="studio-metric__label">Scheduled</p>
+                <strong>{scheduledCount}</strong>
+            </article>
+            <article class="studio-metric">
                 <p class="studio-metric__label">Drafts</p>
                 <strong>{draftCount}</strong>
             </article>
@@ -111,12 +124,20 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                                                         "studio-badge",
                                                         post.status === "draft"
                                                             ? "studio-badge--draft"
-                                                            : "studio-badge--published",
+                                                            : post.status ===
+                                                                "scheduled"
+                                                              ? "studio-badge--scheduled"
+                                                              : "studio-badge--published",
                                                     ]}
+                                                    data-status={post.status}
+                                                    data-pubdate={post.pubDate}
                                                 >
                                                     {post.status === "draft"
                                                         ? "Draft"
-                                                        : "Published"}
+                                                        : post.status ===
+                                                            "scheduled"
+                                                          ? "Scheduled"
+                                                          : "Published"}
                                                 </span>
                                                 <span class="studio-list__date">
                                                     {post.updated}
@@ -184,3 +205,41 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
         font-size: 0.85rem;
     }
 </style>
+
+<script>
+    // Keep Draft / Scheduled / Published badges accurate against the current
+    // time: a scheduled article flips to "Published" the moment its pubDate
+    // passes, without waiting for a rebuild.
+    const BADGE_LABELS: Record<string, string> = {
+        draft: "Draft",
+        scheduled: "Scheduled",
+        published: "Published",
+    };
+    const BADGE_CLASSES: Record<string, string> = {
+        draft: "studio-badge--draft",
+        scheduled: "studio-badge--scheduled",
+        published: "studio-badge--published",
+    };
+    const now = Date.now();
+    document
+        .querySelectorAll("[data-status][data-pubdate]")
+        .forEach((el) => {
+            const pubDate = Number(
+                new Date(el.getAttribute("data-pubdate") || ""),
+            );
+            const isDraft = el.getAttribute("data-status") === "draft";
+            const status = isDraft
+                ? "draft"
+                : pubDate > now
+                  ? "scheduled"
+                  : "published";
+            el.classList.remove(
+                "studio-badge--draft",
+                "studio-badge--scheduled",
+                "studio-badge--published",
+            );
+            el.classList.add(BADGE_CLASSES[status]);
+            el.textContent = BADGE_LABELS[status];
+            el.setAttribute("data-status", status);
+        });
+</script>

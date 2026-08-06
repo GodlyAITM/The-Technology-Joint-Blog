@@ -2,6 +2,7 @@
 import { getCollection } from "astro:content";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import StudioShell from "../../components/studio/StudioShell.astro";
+import { getArticleStatus } from "../../lib/articles";
 
 const posts = (await getCollection("articles"))
     .slice()
@@ -9,7 +10,15 @@ const posts = (await getCollection("articles"))
     .map((post) => ({
         title: post.data.title,
         category: post.data.category,
-        status: post.data.draft ? "draft" : "published",
+        status: getArticleStatus(post),
+        pubDate: post.data.pubDate.toISOString(),
+        scheduledLabel: post.data.pubDate.toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+        }),
         featured: post.data.featured,
         updated:
             post.data.updatedDate?.toLocaleDateString("en-US", {
@@ -83,12 +92,26 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                                                     "studio-badge",
                                                     post.status === "draft"
                                                         ? "studio-badge--draft"
-                                                        : "studio-badge--published",
+                                                        : post.status ===
+                                                            "scheduled"
+                                                          ? "studio-badge--scheduled"
+                                                          : "studio-badge--published",
                                                 ]}
+                                                data-status={post.status}
+                                                data-pubdate={post.pubDate}
+                                                title={
+                                                    post.status ===
+                                                    "scheduled"
+                                                        ? `Scheduled for ${post.scheduledLabel}`
+                                                        : undefined
+                                                }
                                             >
                                                 {post.status === "draft"
                                                     ? "Draft"
-                                                    : "Published"}
+                                                    : post.status ===
+                                                        "scheduled"
+                                                      ? "Scheduled"
+                                                      : "Published"}
                                             </span>
                                             {
                                                 post.featured && (
@@ -135,3 +158,43 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
         </section>
     </StudioShell>
 </BaseLayout>
+
+<script>
+    // Keep Draft / Scheduled / Published badges accurate against the current
+    // time: a scheduled article flips to "Published" the moment its pubDate
+    // passes, without waiting for a rebuild.
+    const BADGE_LABELS: Record<string, string> = {
+        draft: "Draft",
+        scheduled: "Scheduled",
+        published: "Published",
+    };
+    const BADGE_CLASSES: Record<string, string> = {
+        draft: "studio-badge--draft",
+        scheduled: "studio-badge--scheduled",
+        published: "studio-badge--published",
+    };
+    const now = Date.now();
+    document
+        .querySelectorAll("[data-status][data-pubdate]")
+        .forEach((el) => {
+            const pubDate = Number(
+                new Date(el.getAttribute("data-pubdate") || ""),
+            );
+            const isDraft = el.getAttribute("data-status") === "draft";
+            const status = isDraft
+                ? "draft"
+                : pubDate > now
+                  ? "scheduled"
+                  : "published";
+            el.classList.remove(
+                "studio-badge--draft",
+                "studio-badge--scheduled",
+                "studio-badge--published",
+            );
+            el.classList.add(BADGE_CLASSES[status]);
+            el.textContent = BADGE_LABELS[status];
+            el.setAttribute("data-status", status);
+            // A flipped badge must not keep the "Scheduled for …" tooltip
+            if (status !== "scheduled") el.removeAttribute("title");
+        });
+</script>

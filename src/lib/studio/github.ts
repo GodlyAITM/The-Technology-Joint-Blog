@@ -40,6 +40,9 @@ export interface ArticleData {
     canonicalURL?: string;
 }
 
+// Stored in sessionStorage (not localStorage) so the local-dev fallback
+// configuration is never remembered across browser sessions — consistent
+// with the studio's "always require login" policy.
 const STORAGE_KEY = "studio-github-config";
 const API = "https://api.github.com";
 
@@ -64,7 +67,7 @@ export function hasApi(): boolean {
 
 export function getStudioConfig(): StudioConfig | null {
     try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
+        const raw = window.sessionStorage.getItem(STORAGE_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw) as Partial<StudioConfig>;
         if (!parsed.owner || !parsed.repo) return null;
@@ -80,7 +83,7 @@ export function getStudioConfig(): StudioConfig | null {
 }
 
 export function saveStudioConfig(config: StudioConfig): void {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(config));
 }
 
 export function hasStudioConfig(): boolean {

@@ -35,6 +35,11 @@ jobs:
         run: npm run build
         env:
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
+          # Set this repo variable to the Studio API worker URL
+          # (e.g. https://ttj-studio-api.<your-subdomain>.workers.dev) to enable
+          # GitHub OAuth sign-in on the deployed Studio. Without it, the
+          # deployed Studio falls back to local-dev mode.
+          PUBLIC_STUDIO_API_URL: ${{ vars.PUBLIC_STUDIO_API_URL }}
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
