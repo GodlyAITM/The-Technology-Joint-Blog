@@ -6,8 +6,16 @@ import { config, collection, fields } from "@keystatic/core";
 const AUTHORS = ["Israel Alabi"];
 
 export default config({
+    // Keystatic Cloud: GitHub authentication is handled by Keystatic Cloud
+    // (https://keystatic.com/docs/cloud). The admin UI talks to
+    // api.keystatic.cloud directly from the browser, so no site-local OAuth
+    // server routes are required for cloud mode.
     storage: {
-        kind: "local",
+        kind: "cloud",
+    },
+
+    cloud: {
+        project: "ttjb/ttjb",
     },
 
     collections: {

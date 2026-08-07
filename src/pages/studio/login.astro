@@ -1,7 +1,10 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getApiBase } from "../../lib/studio/github";
 
-const apiBase = (import.meta.env.PUBLIC_STUDIO_API_URL as string | undefined)?.replace(/\/$/, "");
+// Build-safe: getApiBase() returns "" when PUBLIC_STUDIO_API_URL is unset,
+// so the missing variable can never break the build or the login page.
+const apiBase = getApiBase();
 const hasOAuth = Boolean(apiBase);
 ---
 
@@ -12,11 +15,7 @@ const hasOAuth = Boolean(apiBase);
     <section class="login-shell">
         <div class="login-card">
             <p class="studio-eyebrow">Private access</p>
-            <h1>Welcome to the Studio</h1>
-            <p>
-                Sign in with GitHub to manage articles on the live site.
-                The Studio only ever writes to The Technology Joint repository.
-            </p>
+            <h1>Welcome to The Technology Joint Studio</h1>
 
             {
                 hasOAuth ? (
@@ -34,9 +33,11 @@ const hasOAuth = Boolean(apiBase);
                             Log in with GitHub
                         </a>
                         <p class="login-hint">
-                            You'll be redirected to GitHub to authorize the
-                            Studio app. Your session is stored in a secure
-                            cookie.
+                            Sign in with GitHub to manage articles on the live
+                            site. The Studio only ever writes to The Technology
+                            Joint repository. You'll be redirected to GitHub to
+                            authorize the Studio app, and your session is
+                            stored in a secure cookie.
                         </p>
                         <div id="login-status" class="login-status" aria-live="polite">
                             Starting sign in…
@@ -65,7 +66,9 @@ const hasOAuth = Boolean(apiBase);
 </BaseLayout>
 
 <script>
-    const apiBase = (import.meta.env.PUBLIC_STUDIO_API_URL as string | undefined)?.replace(/\/$/, "");
+    import { getApiBase } from "../../lib/studio/github";
+
+    const apiBase = getApiBase();
     const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
     if (apiBase) {
@@ -73,10 +76,13 @@ const hasOAuth = Boolean(apiBase);
         const status = document.getElementById("login-status");
 
         if (link && status) {
-            // Preserve the studio page the user came from (e.g. editor deep links)
-            const next =
+            // Preserve the studio page the user came from (e.g. editor deep links).
+            // Resolve to an absolute URL — the worker's safeNext only accepts
+            // absolute targets on an allowed origin.
+            const rawNext =
                 new URLSearchParams(window.location.search).get("next") ||
                 `${base}/studio`;
+            const next = new URL(rawNext, window.location.origin).toString();
             const loginUrl = new URL("/api/auth/login", apiBase);
             loginUrl.searchParams.set("next", next);
             link.href = loginUrl.toString();
@@ -132,12 +138,6 @@ const hasOAuth = Boolean(apiBase);
 
     .login-card h1 {
         margin: 0 0 0.75rem;
-    }
-
-    .login-card > p {
-        color: var(--color-muted);
-        line-height: 1.6;
-        margin: 0 0 1.5rem;
     }
 
     .login-oauth {

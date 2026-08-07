@@ -5,7 +5,7 @@ workers_dev = true
 
 # Non-secret defaults (override in dashboard/CI if needed)
 [vars]
-SITE_ORIGIN = "https://godlyaitm.github.io"
+SITE_ORIGIN = "https://godlyaitm.github.io,http://localhost:4321,http://127.0.0.1:4321"
 SITE_BASE = "/The-Technology-Joint-Blog"
 DEFAULT_OWNER = "godlyaitm"
 DEFAULT_REPO = "The-Technology-Joint-Blog"

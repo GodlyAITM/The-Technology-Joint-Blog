@@ -35,10 +35,9 @@ jobs:
         run: npm run build
         env:
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
-          # Set this repo variable to the Studio API worker URL
-          # (e.g. https://ttj-studio-api.<your-subdomain>.workers.dev) to enable
-          # GitHub OAuth sign-in on the deployed Studio. Without it, the
-          # deployed Studio falls back to local-dev mode.
+          # Optional: only used by the legacy Studio API worker (studio-api/)
+          # fallback. The studio editor now uses Keystatic Cloud on Vercel, so
+          # this can stay unset — the public site must always build without it.
           PUBLIC_STUDIO_API_URL: ${{ vars.PUBLIC_STUDIO_API_URL }}
 
       - name: Upload Artifact

@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import { SITE } from "../config/site";
+import { getApiBase } from "../lib/studio/github";
 
 interface Props {
     title?: string;
@@ -20,9 +21,9 @@ const {
 
 const siteBase = import.meta.env.BASE_URL;
 const siteBaseClean = siteBase.replace(/\/$/, "");
-const studioApiBase = (
-    import.meta.env.PUBLIC_STUDIO_API_URL || ""
-).replace(/\/$/, "");
+// getApiBase() is build-safe: it returns "" when PUBLIC_STUDIO_API_URL is
+// unset, so the missing variable can never break any page build.
+const studioApiBase = getApiBase();
 const googleSiteVerification =
     import.meta.env.GOOGLE_SITE_VERIFICATION?.trim() ||
     "W-kyMHdnvxYxUUuNKa1lUe9CFY2doViJm3duZAbr32E";

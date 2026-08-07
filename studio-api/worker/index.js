@@ -306,23 +306,30 @@ function callbackUrl(origin) {
   return `${origin}/api/auth/callback`;
 }
 
+/** Comma-separated list of allowed site origins (env.SITE_ORIGIN). */
+function allowedOrigins(env) {
+  return ((env && env.SITE_ORIGIN) || "https://godlyaitm.github.io")
+    .split(",")
+    .map((o) => o.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+}
+
 function defaultStudioUrl(env) {
   const base = (env.SITE_BASE || "").replace(/\/$/, "");
-  return `${env.SITE_ORIGIN || "https://godlyaitm.github.io"}${base}/studio`;
+  const origin = allowedOrigins(env)[0] || "https://godlyaitm.github.io";
+  return `${origin}${base}/studio`;
 }
 
 /**
- * Only allow `next` targets on the static site itself, preventing open
- * redirects after OAuth. Accepts the exact origin (optionally with the
- * site base path).
+ * Only allow `next` targets on the static site's own origins, preventing
+ * open redirects after OAuth. Any path on an allowed origin is accepted
+ * (the base path is included), so production and local dev (localhost)
+ * both work when their origins are listed in SITE_ORIGIN.
  */
 function safeNext(env, value) {
   if (!value) return null;
-  const origin = env.SITE_ORIGIN || "https://godlyaitm.github.io";
-  const base = (env.SITE_BASE || "").replace(/\/$/, "");
-  const allowed = `${origin}${base}`;
-  if (value === origin || value === allowed || value.startsWith(allowed + "/")) {
-    return value;
+  for (const origin of allowedOrigins(env)) {
+    if (value === origin || value.startsWith(origin + "/")) return value;
   }
   return null;
 }
@@ -357,11 +364,7 @@ function cors(response, request, env) {
   // credentials, ACAO can never be "*". Requests without an Origin header
   // (curl, server-to-server) get no ACAO at all.
   const origin = request.headers.get("Origin");
-  const allowedOrigins = ((env && env.SITE_ORIGIN) || "https://godlyaitm.github.io")
-    .split(",")
-    .map((o) => o.trim())
-    .filter(Boolean);
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && allowedOrigins(env).includes(origin)) {
     headers.set("Access-Control-Allow-Origin", origin);
     headers.set("Access-Control-Allow-Credentials", "true");
   }

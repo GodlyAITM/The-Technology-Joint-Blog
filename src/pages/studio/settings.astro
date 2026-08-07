@@ -1,10 +1,11 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import StudioShell from "../../components/studio/StudioShell.astro";
+import { hasApi } from "../../lib/studio/github";
 
-const hasOAuth = Boolean(
-    (import.meta.env.PUBLIC_STUDIO_API_URL as string | undefined)?.trim(),
-);
+// Build-safe: hasApi() returns false when PUBLIC_STUDIO_API_URL is unset,
+// so the missing variable can never break the build or this page.
+const hasOAuth = hasApi();
 ---
 
 <BaseLayout
@@ -172,14 +173,13 @@ const hasOAuth = Boolean(
         getSession,
         getLoginUrl,
         signOut,
+        getApiBase,
         DEFAULT_OWNER,
         DEFAULT_REPO,
         DEFAULT_BRANCH,
     } from "../../lib/studio/github";
 
-    const apiBase = (
-        import.meta.env.PUBLIC_STUDIO_API_URL || ""
-    ).replace(/\/$/, "");
+    const apiBase = getApiBase();
     const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
     const form = document.getElementById(

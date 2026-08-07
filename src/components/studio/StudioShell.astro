@@ -53,14 +53,14 @@ const navItems = [
 </div>
 
 <script>
+    import { getApiBase } from "../../lib/studio/github";
+
     const signOut = document.querySelector<HTMLButtonElement>(
         "[data-studio-signout]",
     );
 
     signOut?.addEventListener("click", async () => {
-        const apiBase = (
-            import.meta.env.PUBLIC_STUDIO_API_URL || ""
-        ).replace(/\/$/, "");
+        const apiBase = getApiBase();
         if (apiBase) {
             try {
                 await fetch(`${apiBase}/api/auth/logout`, {
@@ -80,10 +80,7 @@ const navItems = [
     const roleCard = document.querySelector<HTMLElement>(
         ".studio-card[data-role-card]",
     );
-    const apiBase = (import.meta.env.PUBLIC_STUDIO_API_URL || "").replace(
-        /\/$/,
-        "",
-    );
+    const apiBase = getApiBase();
     if (apiBase && roleCard) {
         fetch(`${apiBase}/api/auth/session`, { credentials: "include" })
             .then((res) => res.json())
