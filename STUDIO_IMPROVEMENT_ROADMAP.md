@@ -1,6 +1,13 @@
 # Studio Improvement Roadmap — Phase 0 Discovery & Diagnosis
 
-Status: **PHASE 0 COMPLETE — awaiting confirmation before Phase 1 (no application code changed).**
+Status: **PHASE 1 SHIPPED — client-side editor fix, credential removal, and PAT-mode Studio deployed on GitHub Pages.**
+
+> Update note (Aug 2026): Phase 0's most urgent findings are resolved on `main`:
+>
+> - **Objective 5 (blank editor in production):** fixed — `editor.astro` now reads `?slug=` client-side (`loadArticleFromUrl()`) and hydrates the form from GitHub via the Contents API.
+> - **S1 (hardcoded credentials):** removed from `login.astro`; the Studio gate is now a lightweight `sessionStorage` session by design.
+> - **PAT friction (Objective 4):** personal-access-token mode is now the documented default (`sessionStorage`, fine-grained `Contents` + `Workflows` permissions); the OAuth worker (`studio-api/`) remains as an optional upgrade via `PUBLIC_STUDIO_API_URL`.
+> - `public/robot.txt` corrected to `public/robots.txt`; stale debug artifact `deployed-editor.js` removed.
 
 ---
 
@@ -13,8 +20,8 @@ Status: **PHASE 0 COMPLETE — awaiting confirmation before Phase 1 (no applicat
 | Base path | `/The-Technology-Joint-Blog/` in production builds; `/` in local dev |
 | Content | Local Markdown in `src/content/articles/` + `src/content.config.ts` (Zod schema) |
 | Studio | Static pages under `/studio/*` (dashboard, articles, editor, media, settings, login) wrapped by `StudioShell.astro` |
-| Persistence | GitHub Contents API called **directly from the browser** (`src/lib/studio/github.ts`) with a Personal Access Token stored in `localStorage` |
-| Auth | **Client-side only** — a `localStorage` flag (`studio-auth`) checked by an inline script in `BaseLayout.astro` + `StudioShell.astro`; `login.astro` compares **hardcoded email/password embedded in the shipped source** |
+| Persistence | GitHub Contents API called **directly from the browser** (`src/lib/studio/github.ts`) with a Personal Access Token stored in `sessionStorage` (default); optional OAuth worker (`PUBLIC_STUDIO_API_URL`) proxies via HttpOnly cookie |
+| Auth | **Client-side only** — a `sessionStorage` flag (`studio-auth`) checked by an inline script in `BaseLayout.astro` + `StudioShell.astro`; no hardcoded credentials (Phase 1) |
 | Deploy pipeline | Push to `main` → `.github/workflows/deploy.yml` → `npm ci && npm run build` → `upload-pages-artifact` → `deploy-pages` |
 
 Key consequence of the architecture: **there is no server runtime on GitHub Pages.** Anything that needs to run server-side (HTTP-only cookies, CSRF tokens, server-side token vaulting, rate limiting, OAuth authorization-code exchange) requires either a static-only alternative or a small serverless addition.

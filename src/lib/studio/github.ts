@@ -3,17 +3,14 @@
  *
  * Two transport modes:
  *
- *  1. OAuth mode (recommended, production): when `PUBLIC_STUDIO_API_URL`
- *     is set, all GitHub calls are proxied through the Studio API worker
- *     (/api/gh/*). The worker holds the GitHub access token server-side
- *     and authenticates via an HttpOnly session cookie, so no token ever
- *     lives in the browser. Session state is checked with credentials so
- *     the cookie is sent automatically.
+ *  1. PAT mode (default): the GitHub Contents API is called directly from
+ *     the browser using a personal access token stored in sessionStorage
+ *     (set in Studio → Settings). No server required.
  *
- *  2. Legacy PAT mode (local dev / no worker): falls back to the GitHub
- *     Contents API directly from the browser using a personal access
- *     token stored in localStorage. Kept for local workflows without a
- *     deployed worker.
+ *  2. OAuth mode (optional): when `PUBLIC_STUDIO_API_URL` is set, GitHub
+ *     calls are proxied through the Studio API worker (/api/gh/*). The
+ *     worker holds the GitHub access token server-side and authenticates
+ *     via an HttpOnly session cookie. Not required for the default setup.
  */
 
 export interface StudioConfig {
@@ -42,9 +39,9 @@ export interface ArticleData {
     canonicalURL?: string;
 }
 
-// Stored in sessionStorage (not localStorage) so the local-dev fallback
-// configuration is never remembered across browser sessions — consistent
-// with the studio's "always require login" policy.
+// Stored in sessionStorage (not localStorage) so the token is never
+// remembered across browser sessions — consistent with the studio's
+// "always require login" policy.
 const STORAGE_KEY = "studio-github-config";
 const API = "https://api.github.com";
 

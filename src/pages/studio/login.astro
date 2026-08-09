@@ -45,18 +45,17 @@ const hasOAuth = Boolean(apiBase);
                     </div>
                 ) : (
                     <div id="login-local" class="login-oauth">
-                        <p class="login-warning">
-                            <strong>Local development mode.</strong> No Studio
-                            API worker is configured
-                            (<code>PUBLIC_STUDIO_API_URL</code>), so a
-                            lightweight local session is used. Deploy the
-                            worker to enable GitHub sign-in.
+                        <p class="login-note">
+                            <strong>The Studio runs on this site</strong> — no
+                            separate server or API needed. Publishing commits
+                            straight to GitHub using the personal access token
+                            you save in Studio → Settings.
                         </p>
                         <form id="studio-login-form" class="login-form">
                             <button type="submit">Enter Studio</button>
                         </form>
                         <div id="login-status" class="login-status" aria-live="polite">
-                            Local session gate — continues to the Studio.
+                            Signing you in…
                         </div>
                     </div>
                 )
@@ -180,29 +179,21 @@ const hasOAuth = Boolean(apiBase);
         font-size: 0.9rem;
     }
 
-    .login-warning {
+    .login-note {
         font-size: 0.9rem;
         line-height: 1.55;
         padding: 0.85rem 1rem;
         border-radius: var(--radius-md);
         background: color-mix(
             in srgb,
-            var(--color-warning) 12%,
+            var(--color-primary) 10%,
             var(--color-surface)
         );
         border: 1px solid color-mix(
             in srgb,
-            var(--color-warning) 45%,
+            var(--color-primary) 35%,
             var(--color-border)
         );
-    }
-
-    .login-warning code {
-        background: var(--code-inline-bg);
-        color: var(--code-inline-text);
-        padding: 0.1rem 0.35rem;
-        border-radius: 6px;
-        font-size: 0.82em;
     }
 
     .login-form {

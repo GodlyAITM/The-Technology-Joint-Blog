@@ -202,7 +202,7 @@ const websiteSchema = {
                 }
 
                 if (!apiBase) {
-                    // Local-dev fallback: lightweight session stored in
+                    // Default (no worker): lightweight session stored in
                     // sessionStorage ONLY, so it is cleared when the browser/
                     // tab session ends and every visit asks to sign in again.
                     var authenticated =

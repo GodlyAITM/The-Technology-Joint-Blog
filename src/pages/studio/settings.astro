@@ -79,12 +79,11 @@ const hasOAuth = hasApi();
                             placeholder="github_pat_…"
                         />
                         <p class="studio-hint">
-                            Local-dev fallback: create a fine-grained token
-                            with <strong>Contents: Read and write</strong> and{" "}
+                            Create a fine-grained token with{" "}
+                            <strong>Contents: Read and write</strong> and{" "}
                             <strong>Workflows: Read and write</strong> on this
-                            repo. When a Studio API worker is configured
-                            (<code>PUBLIC_STUDIO_API_URL</code>), sign in with
-                            GitHub instead and no token is needed.
+                            repo. The token is kept for this session only and
+                            lets the editor commit articles straight to GitHub.
                         </p>
                     </div>
 
