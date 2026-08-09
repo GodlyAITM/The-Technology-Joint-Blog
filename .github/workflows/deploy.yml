@@ -35,10 +35,13 @@ jobs:
         run: npm run build
         env:
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
-          # Optional: only used by the legacy Studio API worker (studio-api/)
-          # fallback. The studio editor now uses Keystatic Cloud on Vercel, so
-          # this can stay unset — the public site must always build without it.
+          # Optional: used by the Studio only when the OAuth worker (studio-api/)
+          # is deployed. The studio works without it using a personal access
+          # token; the public site must always build without it.
           PUBLIC_STUDIO_API_URL: ${{ vars.PUBLIC_STUDIO_API_URL }}
+          # Optional: Simple Analytics hostname (e.g. godlyaitm.github.io).
+          # Loads the analytics script and enables the studio traffic panel.
+          PUBLIC_ANALYTICS_DOMAIN: ${{ vars.PUBLIC_ANALYTICS_DOMAIN }}
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3

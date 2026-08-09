@@ -76,6 +76,7 @@ jobs:
         env:
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
           PUBLIC_STUDIO_API_URL: ${{ vars.PUBLIC_STUDIO_API_URL }}
+          PUBLIC_ANALYTICS_DOMAIN: ${{ vars.PUBLIC_ANALYTICS_DOMAIN }}
 
       - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3

@@ -25,7 +25,7 @@ The public website is already a static Astro blog powered by local Markdown cont
 ## Technical Plan
 
 ### Phase 0: Discovery and foundation
-- Confirm the current content schema in src/content.config.ts and keystatic.config.ts.
+- Confirm the current content schema in src/content.config.ts.
 - Use the existing local Markdown workflow as the canonical source of truth.
 - Document a proposed Studio route structure and file-writing strategy.
 
@@ -53,7 +53,7 @@ The public website is already a static Astro blog powered by local Markdown cont
 
 ### Phase 5: AI assist and analytics placeholders
 - Add a slide-out assistant panel that suggests improvements rather than modifying content automatically.
-- Prepare modular analytics widgets for Google Analytics or Plausible integration later.
+- Traffic stats integrated via Simple Analytics (public JSON endpoint); editorial stats live on the dashboard.
 - Add settings panels for brand defaults, SEO defaults, and user profile preferences.
 
 ## Implementation Notes
@@ -82,4 +82,4 @@ The public website is already a static Astro blog powered by local Markdown cont
 
 ## Recommendation
 
-This project already has a strong content foundation through Astro + local Markdown + Keystatic. The safest path is to evolve that model into a private Studio experience rather than introducing a separate database-backed CMS. That preserves the current static site performance, SEO, and URL structure while giving editors a modern publishing workflow.
+This project already has a strong content foundation through Astro + local Markdown. The safest path is to evolve that model into a private Studio experience rather than introducing a separate database-backed CMS. That preserves the current static site performance, SEO, and URL structure while giving editors a modern publishing workflow.

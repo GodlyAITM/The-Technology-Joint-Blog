@@ -36,6 +36,36 @@ const recentPosts = posts
         slug: post.id,
     }));
 
+// Category breakdown for the dashboard (server-side, no JS needed).
+const categoryCounts = Object.entries(
+    posts.reduce<Record<string, number>>((acc, post) => {
+        const category = post.data.category || "Uncategorized";
+        acc[category] = (acc[category] || 0) + 1;
+        return acc;
+    }, {}),
+)
+    .sort((a, b) => b[1] - a[1])
+    .map(([category, count]) => ({ category, count }));
+
+// Total words across published articles — a simple "editorial volume" stat.
+const totalWords = posts
+    .filter((post) => getArticleStatus(post) === "published")
+    .reduce(
+        (sum, post) =>
+            sum +
+            (post.body
+                ? post.body.trim().split(/\s+/).filter(Boolean).length
+                : 0),
+        0,
+    );
+
+// slug -> title map injected for the traffic panel (avoids a runtime fetch
+// for article metadata).
+const articleList = posts.map((post) => ({
+    slug: post.id,
+    title: post.data.title,
+}));
+
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 ---
 
@@ -100,6 +130,80 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                 <p class="studio-metric__label">Total articles</p>
                 <strong>{posts.length}</strong>
             </article>
+            <article class="studio-metric">
+                <p class="studio-metric__label">Words published</p>
+                <strong>{totalWords.toLocaleString()}</strong>
+            </article>
+        </section>
+
+        <section
+            class="studio-panel"
+            data-traffic-panel
+            data-articles={JSON.stringify(articleList)}
+        >
+            <div class="studio-panel__header">
+                <h3>Traffic overview</h3>
+                <div class="studio-period" role="group" aria-label="Traffic period">
+                    <button
+                        class="studio-button studio-button--secondary studio-button--sm is-active"
+                        type="button"
+                        data-period="7d"
+                    >
+                        7 days
+                    </button>
+                    <button
+                        class="studio-button studio-button--secondary studio-button--sm"
+                        type="button"
+                        data-period="30d"
+                    >
+                        30 days
+                    </button>
+                    <button
+                        class="studio-button studio-button--secondary studio-button--sm"
+                        type="button"
+                        data-period="90d"
+                    >
+                        90 days
+                    </button>
+                </div>
+            </div>
+            <div
+                class="studio-traffic__summary"
+                id="traffic-summary"
+                aria-live="polite"
+            ></div>
+            <div class="studio-traffic__list" id="traffic-list"></div>
+            <p class="studio-traffic__empty" id="traffic-hint"></p>
+        </section>
+
+        <section class="studio-panel">
+            <div class="studio-panel__header">
+                <h3>Content by category</h3>
+            </div>
+            {
+                categoryCounts.length > 0 ? (
+                    <ul class="studio-list">
+                        {
+                            categoryCounts.map(({ category, count }) => (
+                                <li>
+                                    <div>
+                                        <strong>{category}</strong>
+                                        <p>
+                                            {count}{" "}
+                                            {count === 1 ? "article" : "articles"}
+                                        </p>
+                                    </div>
+                                    <span class="studio-traffic__count">
+                                        {count}
+                                    </span>
+                                </li>
+                            ))
+                        }
+                    </ul>
+                ) : (
+                    <p class="studio-lead">No categories yet.</p>
+                )
+            }
         </section>
 
         <section class="studio-grid">
@@ -242,4 +346,166 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
             el.textContent = BADGE_LABELS[status];
             el.setAttribute("data-status", status);
         });
+</script>
+
+<script>
+    import { getStudioConfig } from "../../lib/studio/github";
+
+    const panel = document.querySelector<HTMLElement>("[data-traffic-panel]");
+    const summaryEl = document.getElementById("traffic-summary");
+    const listEl = document.getElementById("traffic-list");
+    const hintEl = document.getElementById("traffic-hint");
+    const periodButtons =
+        document.querySelectorAll<HTMLButtonElement>("[data-period]");
+
+    if (!panel || !summaryEl || !listEl || !hintEl) {
+        // Traffic panel not present (e.g. page changed) — nothing to do.
+    } else {
+        // Local aliases so TypeScript keeps the non-null narrowing inside
+        // the nested async function below.
+        const summary = summaryEl;
+        const list = listEl;
+        const hint = hintEl;
+        const articles = JSON.parse(panel.dataset.articles || "[]") as {
+            slug: string;
+            title: string;
+        }[];
+        const titles = new Map(articles.map((a) => [a.slug, a.title]));
+        const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+        // The domain baked into the build (PUBLIC_ANALYTICS_DOMAIN) can be
+        // overridden per session from Studio → Settings.
+        const body = document.body;
+        const builtInDomain =
+            (body && body.getAttribute("data-analytics-domain")) || "";
+        const configDomain = getStudioConfig()?.analyticsDomain || "";
+        const domain = configDomain || builtInDomain;
+
+        function escapeHtml(value: string): string {
+            return value
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        async function loadTraffic(period: string) {
+            if (!domain) {
+                summary.innerHTML = "";
+                list.innerHTML = "";
+                hint.textContent =
+                    "No analytics domain configured — add one in Studio → Settings, or set PUBLIC_ANALYTICS_DOMAIN on the build.";
+                return;
+            }
+
+            hint.textContent = "Loading traffic…";
+            try {
+                const days =
+                    period === "7d" ? 7 : period === "90d" ? 90 : 30;
+                const url =
+                    `https://simpleanalytics.com/${encodeURIComponent(
+                        domain,
+                    )}.json?version=6&fields=pageviews,visitors,pages&start=today-${days}d&end=today&limit=100`;
+                const controller = new AbortController();
+                const timer = window.setTimeout(
+                    () => controller.abort(),
+                    15000,
+                );
+                let response: Response;
+                try {
+                    response = await fetch(url, {
+                        signal: controller.signal,
+                    });
+                } finally {
+                    window.clearTimeout(timer);
+                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = (await response.json()) as {
+                    pageviews?: number;
+                    visitors?: number;
+                    pages?: { value: string; pageviews?: number }[];
+                };
+
+                const total = data.pageviews ?? 0;
+                const visitors = data.visitors ?? 0;
+                // Normalize paths (trailing slash tolerant) so a hit recorded
+                // as "/path" still matches our "/path/" article URLs.
+                const byPath = new Map<string, number>();
+                for (const p of data.pages ?? []) {
+                    const path = (p.value || "").replace(/\/+$/, "");
+                    if (!path) continue;
+                    byPath.set(path, (byPath.get(path) || 0) + (p.pageviews ?? 0));
+                }
+
+                const rows = articles
+                    .map((article) => {
+                        const articlePath = `${base}/articles/${article.slug}`;
+                        return {
+                            slug: article.slug,
+                            path: `${articlePath}/`,
+                            views: byPath.get(articlePath) || 0,
+                        };
+                    })
+                    .filter((row) => row.views > 0)
+                    .sort((a, b) => b.views - a.views)
+                    .slice(0, 5);
+                const max = rows[0]?.views || 1;
+
+                summary.innerHTML = `
+                    <div class="studio-traffic__stat">
+                        <strong>${total.toLocaleString()}</strong>
+                        <p>Pageviews</p>
+                    </div>
+                    <div class="studio-traffic__stat">
+                        <strong>${visitors.toLocaleString()}</strong>
+                        <p>Visitors</p>
+                    </div>`;
+
+                if (rows.length === 0) {
+                    list.innerHTML = "";
+                    hint.textContent =
+                        "No article views in this period yet — views appear once the analytics script is live.";
+                    return;
+                }
+
+                hint.textContent = "";
+                list.innerHTML = rows
+                    .map(
+                        (row) => `
+                            <div class="studio-traffic__row">
+                                <span class="studio-traffic__title" title="${escapeHtml(
+                                    row.path,
+                                )}">
+                                    ${escapeHtml(titles.get(row.slug) || row.slug)}
+                                </span>
+                                <span class="studio-traffic__count">${row.views.toLocaleString()}</span>
+                                <span class="studio-traffic__bar">
+                                    <span style="width:${Math.max(
+                                        4,
+                                        Math.round((row.views / max) * 100),
+                                    )}%"></span>
+                                </span>
+                            </div>`,
+                    )
+                    .join("");
+            } catch {
+                summary.innerHTML = "";
+                list.innerHTML = "";
+                hint.textContent =
+                    "Couldn't fetch stats — check the analytics domain and make sure the site is marked public in Simple Analytics.";
+            }
+        }
+
+        periodButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                const period = button.dataset.period || "30d";
+                periodButtons.forEach((b) =>
+                    b.classList.toggle("is-active", b === button),
+                );
+                void loadTraffic(period);
+            });
+        });
+
+        void loadTraffic("7d");
+    }
 </script>

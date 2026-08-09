@@ -21,6 +21,8 @@ export interface StudioConfig {
     repo: string;
     branch: string;
     token?: string;
+    /** Simple Analytics hostname used for the traffic stats panel. */
+    analyticsDomain?: string;
 }
 
 export interface ArticleData {

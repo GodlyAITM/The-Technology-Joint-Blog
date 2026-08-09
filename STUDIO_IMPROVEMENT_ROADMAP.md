@@ -10,7 +10,7 @@ Status: **PHASE 0 COMPLETE — awaiting confirmation before Phase 1 (no applicat
 | --- | --- |
 | Framework | Astro 7 (static output, `output: "static"`), React available, no server runtime |
 | Hosting | GitHub Pages via GitHub Actions (`https://godlyaitm.github.io/The-Technology-Joint-Blog/`) |
-| Base path | `/The-Technology-Joint-Blog/` in production builds; `/` in local dev (Keystatic's API requires root) |
+| Base path | `/The-Technology-Joint-Blog/` in production builds; `/` in local dev |
 | Content | Local Markdown in `src/content/articles/` + `src/content.config.ts` (Zod schema) |
 | Studio | Static pages under `/studio/*` (dashboard, articles, editor, media, settings, login) wrapped by `StudioShell.astro` |
 | Persistence | GitHub Contents API called **directly from the browser** (`src/lib/studio/github.ts`) with a Personal Access Token stored in `localStorage` |

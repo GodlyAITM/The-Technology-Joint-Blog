@@ -1,66 +1,62 @@
-# Studio Deployment — Keystatic Cloud on Vercel
+# Studio — Publishing Workspace at /studio
 
-The Studio now uses **Keystatic Cloud** for GitHub authentication and publishing.
-There are **two deployments** of the same repository:
+The Studio is a private publishing workspace served at **`/studio`** on the
+main site (GitHub Pages). It lets you draft, edit, duplicate and publish
+articles that live as Markdown in `src/content/articles/` — no separate
+server, CMS or deployment needed.
 
-| Target | URL | What it serves |
-| --- | --- | --- |
-| Public site (GitHub Pages) | `https://godlyaitm.github.io/The-Technology-Joint-Blog/` | The blog itself. Fully static. **Never** exposes `/keystatic`. |
-| Studio editor (Vercel) | *your-project*.vercel.app | The Keystatic admin UI at `/keystatic`. Everything else redirects to the public site. |
+## How it works
 
-## How the two builds differ
+- The Studio is a set of static pages (`src/pages/studio/*`) built with the
+  rest of the site and served under `/studio`:
 
-`astro.config.mjs` switches behavior on the environment:
+  | Page | What it does |
+  | --- | --- |
+  | `/studio` | Dashboard — editorial stats and recent activity |
+  | `/studio/articles` | Article manager — edit or duplicate existing articles |
+  | `/studio/editor` | Create a new article (draft or publish) |
+  | `/studio/media` | Media notes (hero images upload per-article in the editor) |
+  | `/studio/settings` | GitHub connection and analytics setup |
+  | `/studio/login` | Entry gate (lightweight local session) |
 
-- **GitHub Pages** (`npm run build`, no `VERCEL` env): `output: "static"`, base
-  `/The-Technology-Joint-Blog/`, Keystatic integration **disabled**.
-- **Studio (Vercel)**: Vercel sets `VERCEL=1` automatically. The build then:
-  - Enables the `@keystatic/astro` integration (which registers `/keystatic`
-    and `/api/keystatic` as `prerender: false` server routes).
-  - Adds the `@astrojs/vercel` adapter so those server routes can run.
-  - Serves at the root path `/` (Keystatic's client + OAuth callback are
-    root-relative: `https://<studio>/keystatic/cloud/oauth/callback`).
+- Saving an article commits the Markdown (and any hero image) straight to
+  this repository via the GitHub Contents API, directly from the browser.
+  The existing GitHub Actions workflow then rebuilds and deploys the site
+  automatically (a few minutes).
+- A scheduled workflow (`.github/workflows/scheduled-publish.yml`) rebuilds
+  hourly, so articles with a future `pubDate` go live automatically once
+  their time passes.
 
-Local verification of the studio build:
+## Connecting GitHub (personal access token)
 
-```bash
-STUDIO_DEPLOY=true npm run build   # produces .vercel/output
-```
+1. Open `https://godlyaitm.github.io/The-Technology-Joint-Blog/studio/login`,
+   then go to Studio → **Settings**.
+2. Create a **fine-grained personal access token** on GitHub
+   (Settings → Developer settings → Fine-grained tokens) with:
+   - Repository access: `GodlyAITM/The-Technology-Joint-Blog`
+   - Permissions: **Contents: Read and write**, **Workflows: Read and write**
+3. Paste the token into Studio → Settings → save. The token is kept for the
+   current browser session only (`sessionStorage`), so every fresh visit
+   asks to sign in again.
 
-## Keystatic Cloud
+## Analytics
 
-- Config: `keystatic.config.ts` → `storage: { kind: "cloud" }`,
-  `cloud: { project: "ttjb/ttjb" }`.
-- Keystatic Cloud handles the GitHub OAuth flow itself. The admin UI talks to
-  `api.keystatic.cloud` directly from the browser — **no site-local OAuth
-  worker, no secrets in this repository**.
-- Edits made in the editor commit straight to the `The-Technology-Joint-Blog`
-  GitHub repository; the existing GitHub Actions workflow then rebuilds and
-  deploys the public site.
+Traffic statistics in the Studio dashboard come from **Simple Analytics**
+(privacy-first, cookie-less). Stats are fetched client-side from its public
+JSON endpoint, so no server is required.
 
-## Setup checklist (do these once)
-
-1. **Connect the repo to Vercel** (vercel.com → Add New Project →
-   import `godlyaitm/The-Technology-Joint-Blog`). Vercel detects Astro, runs
-   `npm run build` with `VERCEL=1`, and deploys.
-   - Optional: set env var `PUBLIC_SITE_URL` on Vercel if you ever want the
-     studio domain's sitemap/canonicals to point elsewhere.
-2. **Keystatic Cloud → Project URLs → Primary URL**: enter the Vercel
-   deployment URL, e.g. `https://ttjb-studio.vercel.app`.
-3. **Visit the editor**: `https://ttjb-studio.vercel.app/keystatic` →
-   **Log in with GitHub** → authorize → you're in.
-
-## `vercel.json` redirects
-
-`vercel.json` redirects every path except `/keystatic`, `/api/keystatic` and
-`/_astro` assets to the public site, so the studio domain never serves
-duplicate public content (keeps SEO clean). The editor and its assets are
-served from Vercel.
+1. Create a website in Simple Analytics for the site domain.
+2. Set the GitHub Actions variable `PUBLIC_ANALYTICS_DOMAIN` to that domain.
+   The analytics script then loads on every page and the dashboard shows
+   per-article pageviews.
+3. (Optional) In Studio → Settings, enter the same domain to preview stats
+   locally without a rebuild.
 
 ## Notes
 
-- `npm run dev` still runs Keystatic locally at `/keystatic` (root path).
-- GitHub Actions deploys remain untouched: the public site still builds with
-  `PUBLIC_STUDIO_API_URL` unset and deploys to GitHub Pages.
-- The custom OAuth worker (`studio-api/`) is no longer needed for the studio.
-  It remains in the repo as a fallback; remove it when convenient.
+- `npm run dev` serves the Studio locally at `http://localhost:4321/studio`.
+- The login gate is a lightweight client-side check (`sessionStorage`); the
+  pages are `noindex`ed so they don't appear in search results.
+- The old OAuth worker (`studio-api/`) remains in the repo as an optional
+  upgrade path: deploy it to Cloudflare and set `PUBLIC_STUDIO_API_URL` to
+  enable GitHub OAuth sign-in instead of a token. Not required.

@@ -24,6 +24,10 @@ const siteBaseClean = siteBase.replace(/\/$/, "");
 // getApiBase() is build-safe: it returns "" when PUBLIC_STUDIO_API_URL is
 // unset, so the missing variable can never break any page build.
 const studioApiBase = getApiBase();
+// Simple Analytics hostname (e.g. "godlyaitm.github.io"). When set, the
+// analytics script loads on every page and the Studio dashboard can fetch
+// public per-article stats. Build-safe: empty string when unset.
+const analyticsDomain = import.meta.env.PUBLIC_ANALYTICS_DOMAIN?.trim() || "";
 const googleSiteVerification =
     import.meta.env.GOOGLE_SITE_VERIFICATION?.trim() ||
     "W-kyMHdnvxYxUUuNKa1lUe9CFY2doViJm3duZAbr32E";
@@ -164,6 +168,7 @@ const websiteSchema = {
     <body
         data-site-base={siteBaseClean}
         data-studio-api={studioApiBase}
+        data-analytics-domain={analyticsDomain}
     >
         <slot />
 
@@ -223,6 +228,17 @@ const websiteSchema = {
                     });
             })();
         </script>
+
+        <!-- Simple Analytics - 100% privacy-first analytics -->
+        {
+            analyticsDomain && (
+                <script
+                    is:inline
+                    async
+                    src="https://scripts.simpleanalyticscdn.com/latest.js"
+                />
+            )
+        }
 
         <script is:inline>
             (function () {

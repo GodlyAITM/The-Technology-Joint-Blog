@@ -121,6 +121,29 @@ const hasOAuth = hasApi();
                         </div>
                     </div>
 
+                    <hr class="studio-divider" />
+
+                    <div class="studio-field">
+                        <label for="gh-analytics">
+                            Analytics domain
+                            <span class="studio-hint">(optional)</span>
+                        </label>
+                        <input
+                            id="gh-analytics"
+                            name="analyticsDomain"
+                            type="text"
+                            placeholder="godlyaitm.github.io"
+                            autocomplete="off"
+                        />
+                        <p class="studio-hint">
+                            Your Simple Analytics hostname — the site you
+                            registered there, without "https://". Enables the
+                            traffic panel on the dashboard. Leave empty to use
+                            the domain baked into the build
+                            (<code>PUBLIC_ANALYTICS_DOMAIN</code>).
+                        </p>
+                    </div>
+
                     <div
                         class="studio-status"
                         id="github-status"
@@ -234,6 +257,9 @@ const hasOAuth = hasApi();
     const ownerInput = form.elements.namedItem("owner") as HTMLInputElement;
     const repoInput = form.elements.namedItem("repo") as HTMLInputElement;
     const branchInput = form.elements.namedItem("branch") as HTMLInputElement;
+    const analyticsInput = form.elements.namedItem(
+        "analyticsDomain",
+    ) as HTMLInputElement;
 
     const setStatus = (
         message: string,
@@ -251,6 +277,7 @@ const hasOAuth = hasApi();
             owner: ownerInput.value.trim() || DEFAULT_OWNER,
             repo: repoInput.value.trim() || DEFAULT_REPO,
             branch: branchInput.value.trim() || DEFAULT_BRANCH,
+            analyticsDomain: analyticsInput.value.trim() || undefined,
         };
     }
 
@@ -261,6 +288,7 @@ const hasOAuth = hasApi();
         ownerInput.value = stored.owner;
         repoInput.value = stored.repo;
         branchInput.value = stored.branch;
+        analyticsInput.value = stored.analyticsDomain ?? "";
         setStatus(
             "Connected — token saved for this device.",
             "success",
@@ -278,13 +306,18 @@ const hasOAuth = hasApi();
     form.addEventListener("submit", (event) => {
         event.preventDefault();
         const config = readConfig();
-        if (!config.token) {
-            setStatus("A personal access token is required.", "error");
+        if (!config.token && !config.analyticsDomain) {
+            setStatus(
+                "Add a personal access token (or at least an analytics domain) before saving.",
+                "error",
+            );
             return;
         }
         saveStudioConfig(config);
         setStatus(
-            "Saved for this device. The editor can now commit articles to GitHub.",
+            config.token
+                ? "Saved for this device. The editor can now commit articles to GitHub."
+                : "Analytics domain saved. Add a token when you're ready to publish from the editor.",
             "success",
         );
     });

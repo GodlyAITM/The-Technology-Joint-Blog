@@ -1,9 +1,0 @@
-{
-  "redirects": [
-    {
-      "source": "/((?!keystatic|api/keystatic|_astro).*)",
-      "destination": "https://godlyaitm.github.io/The-Technology-Joint-Blog/$1",
-      "permanent": false
-    }
-  ]
-}
