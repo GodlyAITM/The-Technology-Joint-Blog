@@ -35,10 +35,13 @@ jobs:
         run: npm run build
         env:
           PUBLIC_SITE_URL: ${{ vars.PUBLIC_SITE_URL }}
-          # Optional: used by the Studio only when the OAuth worker (studio-api/)
-          # is deployed. The studio works without it using a personal access
-          # token; the public site must always build without it.
+          # Optional: base URL of the Studio team-login API (e.g. a Vercel
+          # deployment of studio-api/). When set, the Studio uses shared-token
+          # username/password accounts instead of per-device personal access
+          # tokens. Set PUBLIC_STUDIO_AUTH_MODE=oauth to keep the GitHub OAuth
+          # worker flow instead. The public site must always build without it.
           PUBLIC_STUDIO_API_URL: ${{ vars.PUBLIC_STUDIO_API_URL }}
+          PUBLIC_STUDIO_AUTH_MODE: ${{ vars.PUBLIC_STUDIO_AUTH_MODE }}
           # Optional: Simple Analytics hostname (e.g. godlyaitm.github.io).
           # Loads the analytics script and enables the studio traffic panel.
           PUBLIC_ANALYTICS_DOMAIN: ${{ vars.PUBLIC_ANALYTICS_DOMAIN }}

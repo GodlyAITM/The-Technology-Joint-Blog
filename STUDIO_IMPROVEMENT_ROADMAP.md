@@ -1,6 +1,6 @@
 # Studio Improvement Roadmap — Phase 0 Discovery & Diagnosis
 
-Status: **PHASE 1 SHIPPED — client-side editor fix, credential removal, and PAT-mode Studio deployed on GitHub Pages.**
+Status: **PHASES 1–3 SHIPPED — auth (PAT/team/OAuth), theme + mobile redesign, and the Phase 3 Studio UX (autosave, live preview, toasts, shortcuts, media library, search/filter, archived status).**
 
 > Update note (Aug 2026): Phase 0's most urgent findings are resolved on `main`:
 >

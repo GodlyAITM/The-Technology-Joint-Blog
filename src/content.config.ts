@@ -17,6 +17,8 @@ const articles = defineCollection({
 
         updatedDate: z.coerce.date().optional(),
 
+        archived: z.boolean().default(false),
+
         author: z.string(),
 
         category: z.string(),

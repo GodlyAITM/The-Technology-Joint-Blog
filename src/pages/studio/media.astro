@@ -1,8 +1,5 @@
----
-import BaseLayout from "../../layouts/BaseLayout.astro";
+---import BaseLayout from "../../layouts/BaseLayout.astro";
 import StudioShell from "../../components/studio/StudioShell.astro";
-
-const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 ---
 
 <BaseLayout
@@ -16,29 +13,447 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                 <p class="studio-eyebrow">Media workspace</p>
                 <h2>Media manager</h2>
                 <p class="studio-lead">
-                    Hero images are uploaded per-article in the editor and
-                    committed to the site with each save.
+                    Upload images for articles, copy their paths, or remove
+                    files you no longer need. Everything lives in{" "}
+                    <code>public/images/articles/</code> and is committed to
+                    GitHub with one click.
                 </p>
             </div>
+            <button class="studio-button studio-button--secondary" id="media-refresh" type="button">
+                Refresh
+            </button>
         </header>
 
         <section class="studio-panel">
             <div class="studio-panel__header">
-                <h3>Getting started</h3>
+                <h3>Upload images</h3>
             </div>
-            <p class="studio-lead">
-                Open any article in the editor, choose your image in the
-                <strong>Hero image</strong> section, and it will be uploaded
-                to <code>public/images/articles/</code> when you save or
-                publish. A full asset library is planned for a future update.
-            </p>
-            <div class="studio-form__actions" style="margin-top: 1rem">
-                <a
-                    class="studio-button"
-                    href={`${base}/studio/editor`}
-                    >Open the editor</a
-                >
+
+            <div id="media-dropzone" class="media-dropzone" tabindex="0" role="button" aria-label="Upload images">
+                <input id="media-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/svg+xml" multiple hidden />
+                <strong>Drag &amp; drop images here</strong>
+                <span>
+                    or <button type="button" class="media-browse" id="media-browse">browse your files</button>
+                </span>
+                <small>
+                    PNG, JPG, WebP, GIF, AVIF or SVG · up to 8&nbsp;MB each ·
+                    saved to public/images/articles/
+                </small>
             </div>
+
+            <div class="media-upload-progress" id="media-upload-progress" aria-live="polite"></div>
+
+            <div class="studio-status" id="media-status" aria-live="polite"></div>
+
+            <div class="studio-panel__header" style="margin-top: 1.5rem">
+                <h3>Library</h3>
+                <span class="studio-lead" id="media-count" style="margin: 0"></span>
+            </div>
+
+            <div class="media-grid" id="media-grid" aria-busy="true"></div>
+            <p class="studio-table__empty" id="media-empty" hidden></p>
         </section>
     </StudioShell>
 </BaseLayout>
+
+<script>
+    import {
+        hasApi,
+        hasStudioConfig,
+        getSession,
+        getLoginUrl,
+        listDirectory,
+        putFile,
+        deleteFile,
+        getFile,
+        fileToBase64,
+        slugify,
+    } from "../../lib/studio/github";
+    import { showToast } from "../../lib/studio/toast";
+
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    const imagesDir = "public/images/articles";
+    const IMAGE_EXT = /\.(png|jpe?g|webp|gif|avif|svg)$/i;
+    const MAX_BYTES = 8 * 1024 * 1024;
+
+    const dropzone = document.getElementById("media-dropzone");
+    const fileInput = document.getElementById("media-file") as HTMLInputElement | null;
+    const browseBtn = document.getElementById("media-browse");
+    const grid = document.getElementById("media-grid") as HTMLElement | null;
+    const empty = document.getElementById("media-empty") as HTMLElement | null;
+    const count = document.getElementById("media-count") as HTMLElement | null;
+    const status = document.getElementById("media-status") as HTMLElement | null;
+    const progress = document.getElementById("media-upload-progress") as HTMLElement | null;
+    const refreshBtn = document.getElementById("media-refresh") as HTMLButtonElement | null;
+
+    if (!grid || !status) {
+        throw new Error("Studio media page failed to initialize.");
+    }
+
+    const setStatus = (message: string, kind: "info" | "success" | "error" = "info") => {
+        status.className = "studio-status";
+        if (kind === "success") status.classList.add("studio-status--success");
+        if (kind === "error") status.classList.add("studio-status--error");
+        status.textContent = message;
+    };
+
+    const isConnected = () => {
+        if (hasApi()) return true;
+        return hasStudioConfig();
+    };
+
+    function escapeHtml(value: string): string {
+        return value
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
+    function formatBytes(bytes?: number): string {
+        if (!bytes || bytes <= 0) return "—";
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    /* ---- Loading skeleton ---- */
+    function showSkeleton(count = 6) {
+        if (!grid) return;
+        grid.innerHTML = Array.from(
+            { length: count },
+            () =>
+                `<div class="media-card"><div class="studio-skeleton studio-skeleton--card"></div></div>`,
+        ).join("");
+    }
+
+    async function copyText(text: string, label: string) {
+        try {
+            await navigator.clipboard.writeText(text);
+            showToast(`${label} copied to clipboard`, "success");
+        } catch {
+            // Clipboard API blocked — fall back to a prompt-less textarea trick.
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand("copy");
+                showToast(`${label} copied to clipboard`, "success");
+            } catch {
+                showToast(`Couldn't copy automatically — here it is: ${text}`, "info", 8000);
+            }
+            ta.remove();
+        }
+    }
+
+    /* ---- Render the library grid ---- */
+    async function loadImages() {
+        // Local non-null aliases: the module-level guard throws when these
+        // are missing, and a local alias keeps TypeScript's narrowing even
+        // across the awaits below.
+        const gridEl = grid as HTMLElement;
+        if (!isConnected()) {
+            setStatus(
+                "GitHub is not connected — open Studio → Settings to connect before using the media library.",
+                "error",
+            );
+            if (empty) empty.hidden = false;
+            if (empty) empty.textContent = "Connect GitHub to list uploaded images.";
+            return;
+        }
+
+        showSkeleton();
+        gridEl.setAttribute("aria-busy", "true");
+        setStatus("Loading images…");
+
+        try {
+            const entries = await listDirectory(imagesDir);
+            const images = entries.filter(
+                (entry) => entry.type === "file" && IMAGE_EXT.test(entry.name),
+            );
+
+            if (count) count.textContent = `${images.length} ${images.length === 1 ? "image" : "images"}`;
+            if (empty) empty.hidden = images.length > 0;
+
+            if (images.length === 0) {
+                gridEl.innerHTML = "";
+                if (empty) {
+                    empty.textContent =
+                        "No images yet — drag & drop your first one above. Uploads appear here once the next site rebuild completes.";
+                }
+                setStatus("");
+                return;
+            }
+
+            gridEl.innerHTML = images
+                .map((entry) => {
+                    const webPath = `${base}${entry.path.replace(/^public/, "")}`;
+                    return `
+                        <div class="media-card" data-path="${escapeHtml(entry.path)}" data-name="${escapeHtml(entry.name)}">
+                            <div class="media-card__thumb">
+                                <img loading="lazy" src="${webPath}" alt="${escapeHtml(entry.name)}" />
+                            </div>
+                            <div class="media-card__body">
+                                <span class="media-card__name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>
+                                <span class="media-card__meta">${formatBytes(entry.size)} · /images/articles/</span>
+                                <div class="media-card__actions">
+                                    <button class="studio-button studio-button--secondary studio-button--sm" type="button" data-copy="path">Copy path</button>
+                                    <button class="studio-button studio-button--secondary studio-button--sm" type="button" data-copy="markdown">Copy MD</button>
+                                    <button class="studio-button studio-button--danger studio-button--sm" type="button" data-delete title="Delete file">Delete</button>
+                                </div>
+                            </div>
+                        </div>`;
+                })
+                .join("");
+
+            setStatus("");
+        } catch (err) {
+            const statusCode = (err as { status?: number })?.status;
+            if (hasApi() && statusCode === 401) {
+                window.location.assign(getLoginUrl(window.location.href));
+                return;
+            }
+            gridEl.innerHTML = "";
+            if (empty) empty.hidden = false;
+            if (empty) empty.textContent = "Couldn't load images.";
+            setStatus(
+                `Failed to load the media library: ${err instanceof Error ? err.message : String(err)}`,
+                "error",
+            );
+        } finally {
+            gridEl.removeAttribute("aria-busy");
+        }
+    }
+
+    /* ---- Thumbnail fallback (delegated; image errors don't bubble, so
+       listen in the capture phase) ---- */
+    grid?.addEventListener(
+        "error",
+        (event) => {
+            const img = event.target;
+            if (!(img instanceof HTMLImageElement)) return;
+            if (!img.closest(".media-card")) return;
+            const name =
+                img.closest<HTMLElement>(".media-card")?.dataset.name || "img";
+            const fallback = document.createElement("span");
+            fallback.className = "media-thumb-fallback";
+            fallback.textContent = name.split(".")[0] || "img";
+            img.replaceWith(fallback);
+        },
+        true,
+    );
+
+    /* ---- Clipboard actions (event delegation) ---- */
+    grid?.addEventListener("click", async (event) => {
+        const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-copy], [data-delete]");
+        if (!button) return;
+        const card = button.closest<HTMLElement>(".media-card");
+        if (!card) return;
+
+        const name = card.dataset.name || "";
+        const path = card.dataset.path || "";
+
+        if (button.dataset.copy === "path") {
+            await copyText(`${base}/images/articles/${name}`, "Image path");
+            return;
+        }
+        if (button.dataset.copy === "markdown") {
+            await copyText(`![${name.replace(/\.[a-z0-9]+$/i, "")}](${base}/images/articles/${name})`, "Markdown");
+            return;
+        }
+        if (button.dataset.delete) {
+            const confirmed = window.confirm(
+                `Delete ${name} from the repository? This permanently removes the file and cannot be undone.`,
+            );
+            if (!confirmed) return;
+            button.disabled = true;
+            button.textContent = "…";
+            try {
+                const removed = await deleteFile(
+                    path,
+                    `Studio: delete image ${name}`,
+                );
+                if (!removed) {
+                    showToast(`${name} was not found on GitHub.`, "error");
+                } else {
+                    showToast(`${name} deleted. The site rebuild will remove it.`, "success");
+                }
+                await loadImages();
+            } catch (err) {
+                const statusCode = (err as { status?: number })?.status;
+                if (hasApi() && statusCode === 401) {
+                    window.location.assign(getLoginUrl(window.location.href));
+                    return;
+                }
+                showToast(`Delete failed: ${err instanceof Error ? err.message : String(err)}`, "error");
+                button.disabled = false;
+                button.textContent = "Delete";
+            }
+        }
+    });
+
+    /* ---- Upload flow ---- */
+    function addUploadRow(name: string, state: string) {
+        if (!progress) return;
+        const row = document.createElement("div");
+        row.className = "media-upload-progress__row";
+        row.dataset.upload = name;
+        row.innerHTML = `<span class="spinner"></span><span>${escapeHtml(name)} — ${state}</span>`;
+        progress.appendChild(row);
+    }
+
+    function setUploadRow(name: string, state: string, done = false) {
+        const row = progress?.querySelector<HTMLElement>(`[data-upload="${CSS.escape(name)}"]`);
+        if (!row) return;
+        if (done) row.remove();
+        else row.innerHTML = `<span class="spinner"></span><span>${escapeHtml(name)} — ${state}</span>`;
+    }
+
+    async function uploadFiles(files: File[]) {
+        if (!isConnected()) {
+            setStatus(
+                "GitHub is not connected — open Studio → Settings first.",
+                "error",
+            );
+            return;
+        }
+
+        const images = files.filter(
+            (file) => file.type.startsWith("image/") || IMAGE_EXT.test(file.name),
+        );
+        const skipped = files.length - images.length;
+        if (skipped > 0) {
+            showToast(`${skipped} non-image ${skipped === 1 ? "file" : "files"} skipped.`, "info");
+        }
+        if (images.length === 0) {
+            showToast("No image files to upload.", "error");
+            return;
+        }
+
+        // Find an unused file name for each upload.
+        const existingNames = new Set(
+            (await listDirectory(imagesDir)).map((entry) => entry.name),
+        );
+        const uniqueName = (name: string): string => {
+            if (!existingNames.has(name)) {
+                existingNames.add(name);
+                return name;
+            }
+            const extMatch = name.match(/\.([a-z0-9]+)$/i);
+            const ext = extMatch ? `.${extMatch[1].toLowerCase()}` : "";
+            const stem = name.slice(0, name.length - ext.length);
+            for (let i = 1; i < 1000; i++) {
+                const candidate = `${stem}-${i}${ext}`;
+                if (!existingNames.has(candidate)) {
+                    existingNames.add(candidate);
+                    return candidate;
+                }
+            }
+            return `${stem}-${Date.now()}${ext}`;
+        };
+
+        let uploaded = 0;
+        for (const file of images) {
+            if (file.size > MAX_BYTES) {
+                showToast(`${file.name} is larger than 8 MB — skipped.`, "error");
+                continue;
+            }
+
+            const extMatch = file.name.match(/\.([a-z0-9]+)$/i);
+            const ext = extMatch ? extMatch[1].toLowerCase() : "png";
+            const stem = slugify(file.name.replace(/\.[a-z0-9]+$/i, ""));
+            const fileName = uniqueName(`${stem}.${ext}`);
+            const filePath = `${imagesDir}/${fileName}`;
+
+            addUploadRow(fileName, "reading file…");
+            try {
+                const base64 = await fileToBase64(file);
+                setUploadRow(fileName, "committing to GitHub…");
+
+                const existing = await getFile(filePath, { decode: false });
+                await putFile(
+                    filePath,
+                    base64,
+                    `Studio: upload image ${fileName}`,
+                    { sha: existing?.sha, base64: true },
+                );
+                uploaded++;
+                setUploadRow(fileName, "done", true);
+                showToast(`${fileName} uploaded.`, "success");
+            } catch (err) {
+                const statusCode = (err as { status?: number })?.status;
+                setUploadRow(fileName, "failed");
+                if (hasApi() && statusCode === 401) {
+                    window.location.assign(getLoginUrl(window.location.href));
+                    return;
+                }
+                showToast(`Upload failed for ${fileName}: ${err instanceof Error ? err.message : String(err)}`, "error");
+            }
+        }
+
+        if (uploaded > 0) {
+            setStatus(
+                `${uploaded} ${uploaded === 1 ? "image" : "images"} uploaded — they'll appear in the library after the next site rebuild.`,
+                "success",
+            );
+            await loadImages();
+        }
+        window.setTimeout(() => {
+            if (progress) progress.innerHTML = "";
+        }, 3000);
+    }
+
+    fileInput?.addEventListener("change", () => {
+        if (fileInput.files && fileInput.files.length > 0) {
+            void uploadFiles([...fileInput.files]);
+        }
+        fileInput.value = "";
+    });
+
+    browseBtn?.addEventListener("click", () => fileInput?.click());
+    dropzone?.addEventListener("click", (event) => {
+        if ((event.target as HTMLElement).closest(".media-browse")) return;
+        fileInput?.click();
+    });
+
+    /* ---- Drag & drop ---- */
+    dropzone?.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        dropzone.classList.add("is-dragging");
+    });
+    dropzone?.addEventListener("dragleave", () => {
+        dropzone.classList.remove("is-dragging");
+    });
+    dropzone?.addEventListener("drop", (event) => {
+        event.preventDefault();
+        dropzone.classList.remove("is-dragging");
+        const files = event.dataTransfer?.files;
+        if (files && files.length > 0) {
+            void uploadFiles([...files]);
+        }
+    });
+    dropzone?.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            fileInput?.click();
+        }
+    });
+
+    refreshBtn?.addEventListener("click", () => void loadImages());
+
+    /* ---- Boot: redirect to login when a remote session is missing ---- */
+    if (hasApi()) {
+        void getSession().then((session) => {
+            if (!session?.authenticated) {
+                window.location.assign(getLoginUrl(window.location.href));
+                return;
+            }
+            void loadImages();
+        });
+    } else {
+        void loadImages();
+    }
+</script>

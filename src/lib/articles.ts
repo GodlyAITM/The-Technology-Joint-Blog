@@ -11,20 +11,29 @@ export function isPublished(
     article: Article,
     now: Date = new Date(),
 ): boolean {
-    return !article.data.draft && article.data.pubDate.getTime() <= now.getTime();
+    return (
+        !article.data.draft &&
+        !article.data.archived &&
+        article.data.pubDate.getTime() <= now.getTime()
+    );
 }
 
 /**
  * Studio status: draft, scheduled (draft=false but pubDate in the future),
  * or published (draft=false and pubDate has passed).
  */
-export type ArticleStatus = "draft" | "scheduled" | "published";
+export type ArticleStatus =
+    | "draft"
+    | "scheduled"
+    | "published"
+    | "archived";
 
 export function getArticleStatus(
     article: Article,
     now: Date = new Date(),
 ): ArticleStatus {
     if (article.data.draft) return "draft";
+    if (article.data.archived) return "archived";
     return article.data.pubDate.getTime() > now.getTime()
         ? "scheduled"
         : "published";

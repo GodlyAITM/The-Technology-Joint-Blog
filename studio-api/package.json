@@ -1,0 +1,19 @@
+{
+  "name": "ttj-studio-api",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Team-login API for The Technology Joint Studio — Vercel Node functions. Holds the shared GitHub PAT server-side and authenticates Studio editors with username/password accounts.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.34.0"
+  },
+  "devDependencies": {
+    "vercel": "^41.0.0"
+  }
+}

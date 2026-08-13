@@ -14,6 +14,9 @@ const draftCount = posts.filter(
 const scheduledCount = posts.filter(
     (post) => getArticleStatus(post) === "scheduled",
 ).length;
+const archivedCount = posts.filter(
+    (post) => getArticleStatus(post) === "archived",
+).length;
 const recentPosts = posts
     .slice()
     .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
@@ -127,6 +130,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                 <strong>{draftCount}</strong>
             </article>
             <article class="studio-metric">
+                <p class="studio-metric__label">Archived</p>
+                <strong>{archivedCount}</strong>
+            </article>
+            <article class="studio-metric">
                 <p class="studio-metric__label">Total articles</p>
                 <strong>{posts.length}</strong>
             </article>
@@ -231,7 +238,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                                                             : post.status ===
                                                                 "scheduled"
                                                               ? "studio-badge--scheduled"
-                                                              : "studio-badge--published",
+                                                              : post.status ===
+                                                                  "archived"
+                                                                ? "studio-badge--archived"
+                                                                : "studio-badge--published",
                                                     ]}
                                                     data-status={post.status}
                                                     data-pubdate={post.pubDate}
@@ -241,7 +251,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                                                         : post.status ===
                                                             "scheduled"
                                                           ? "Scheduled"
-                                                          : "Published"}
+                                                          : post.status ===
+                                                              "archived"
+                                                            ? "Archived"
+                                                            : "Published"}
                                                 </span>
                                                 <span class="studio-list__date">
                                                     {post.updated}
@@ -318,11 +331,13 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
         draft: "Draft",
         scheduled: "Scheduled",
         published: "Published",
+        archived: "Archived",
     };
     const BADGE_CLASSES: Record<string, string> = {
         draft: "studio-badge--draft",
         scheduled: "studio-badge--scheduled",
         published: "studio-badge--published",
+        archived: "studio-badge--archived",
     };
     const now = Date.now();
     document
@@ -332,15 +347,19 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                 new Date(el.getAttribute("data-pubdate") || ""),
             );
             const isDraft = el.getAttribute("data-status") === "draft";
+            const isArchived = el.getAttribute("data-status") === "archived";
             const status = isDraft
                 ? "draft"
-                : pubDate > now
-                  ? "scheduled"
-                  : "published";
+                : isArchived
+                  ? "archived"
+                  : pubDate > now
+                    ? "scheduled"
+                    : "published";
             el.classList.remove(
                 "studio-badge--draft",
                 "studio-badge--scheduled",
                 "studio-badge--published",
+                "studio-badge--archived",
             );
             el.classList.add(BADGE_CLASSES[status]);
             el.textContent = BADGE_LABELS[status];
@@ -398,7 +417,17 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                 return;
             }
 
-            hint.textContent = "Loading traffic…";
+            // Skeleton loading state while the analytics request is in flight.
+            hint.textContent = "";
+            summary.innerHTML = `
+                <div class="studio-traffic__stat"><span class="studio-skeleton" style="display:inline-block;width:64px;height:24px"></span></div>
+                <div class="studio-traffic__stat"><span class="studio-skeleton" style="display:inline-block;width:64px;height:24px"></span></div>`;
+            list.innerHTML = Array.from(
+                { length: 3 },
+                () =>
+                    `<div class="studio-skeleton studio-skeleton--row" style="margin-bottom:.55rem"></div>`,
+            ).join("");
+
             try {
                 const days =
                     period === "7d" ? 7 : period === "90d" ? 90 : 30;

@@ -1,5 +1,5 @@
 {
   "extends": "./node_modules/astro/tsconfigs/strict.json",
   "include": [".astro/types.d.ts", "**/*"],
-  "exclude": ["dist"]
+  "exclude": ["dist", ".vercel", "studio-api", "scripts", "public"]
 }

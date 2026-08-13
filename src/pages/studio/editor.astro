@@ -40,6 +40,7 @@ const article = sourcePost
           tags: sourcePost.data.tags.join(", "),
           featured: sourcePost.data.featured,
           draft: isDuplicate ? true : sourcePost.data.draft,
+          archived: isDuplicate ? false : sourcePost.data.archived === true,
           heroImage: isDuplicate ? "" : sourcePost.data.heroImage || "",
           featuredImageAlt: isDuplicate
               ? ""
@@ -60,6 +61,7 @@ const article = sourcePost
           tags: "",
           featured: false,
           draft: true,
+          archived: false,
           heroImage: "",
           featuredImageAlt: "",
           seoTitle: "",
@@ -291,6 +293,21 @@ const allSlugs = posts.map((post) => post.id);
                             </small>
                         </span>
                     </label>
+                    <label class="studio-checkbox">
+                        <input
+                            name="archived"
+                            type="checkbox"
+                            checked={article.archived}
+                        />
+                        <span>
+                            <strong>Archived</strong>
+                            <small>
+                                Archived articles are hidden from the public
+                                site but kept in the Studio. "Publish now"
+                                always un-archives.
+                            </small>
+                        </span>
+                    </label>
                 </div>
             </section>
 
@@ -398,16 +415,146 @@ const allSlugs = posts.map((post) => post.id);
                 <div class="studio-form-section__header">
                     <h3>Content</h3>
                     <p>Markdown body — the article itself.</p>
+                    <div
+                        class="studio-view-toggle"
+                        role="group"
+                        aria-label="Editor view"
+                    >
+                        <button
+                            type="button"
+                            data-view="write"
+                            class="is-active"
+                        >
+                            Write
+                        </button>
+                        <button type="button" data-view="split">Split</button>
+                        <button type="button" data-view="preview">
+                            Preview
+                        </button>
+                    </div>
                 </div>
 
                 <div class="studio-field">
-                    <label for="field-body">Article body</label>
-                    <textarea
-                        id="field-body"
-                        name="body"
-                        rows="20"
-                        placeholder="Write your article in Markdown…"
-                    >{article.body}</textarea>
+                    <div
+                        class="studio-editor-toolbar"
+                        role="toolbar"
+                        aria-label="Markdown formatting"
+                    >
+                        <button
+                            type="button"
+                            class="studio-toolbar-btn"
+                            data-md="bold"
+                            title="Bold (Ctrl+B)"
+                        >
+                            <strong>B</strong>
+                        </button>
+                        <button
+                            type="button"
+                            class="studio-toolbar-btn"
+                            data-md="italic"
+                            title="Italic (Ctrl+I)"
+                        >
+                            <em>I</em>
+                        </button>
+                        <button
+                            type="button"
+                            class="studio-toolbar-btn"
+                            data-md="code"
+                            title="Inline code (Ctrl+E)"
+                        >
+                            &lt;/&gt;
+                        </button>
+                        <span class="studio-toolbar-sep" aria-hidden="true"></span>
+                        <button
+                            type="button"
+                            class="studio-toolbar-btn"
+                            data-md="link"
+                            title="Link (Ctrl+K)"
+                        >
+                            🔗
+                        </button>
+                        <button
+                            type="button"
+                            class="studio-toolbar-btn"
+                            data-md="image"
+                            title="Image"
+                        >
+                            🖼
+                        </button>
+                        <span class="studio-toolbar-sep" aria-hidden="true"></span>
+                        <button
+                            type="button"
+                            class="studio-toolbar-btn"
+                            data-md="h2"
+                            title="Heading"
+                        >
+                            H2
+                        </button>
+                        <button
+                            type="button"
+                            class="studio-toolbar-btn"
+                            data-md="list"
+                            title="Bullet list"
+                        >
+                            • List
+                        </button>
+                        <button
+                            type="button"
+                            class="studio-toolbar-btn"
+                            data-md="quote"
+                            title="Quote"
+                        >
+                            ❝
+                        </button>
+                        <button
+                            type="button"
+                            class="studio-toolbar-btn"
+                            data-md="hr"
+                            title="Horizontal rule"
+                        >
+                            —
+                        </button>
+                        <span class="studio-toolbar-hint">
+                            Ctrl+S saves · Ctrl+Shift+S publishes
+                        </span>
+                    </div>
+
+                    <div
+                        class="studio-editor-grid"
+                        id="editor-grid"
+                        data-view="write"
+                    >
+                        <textarea
+                            id="field-body"
+                            name="body"
+                            rows="20"
+                            class="studio-body-textarea"
+                            placeholder="Write your article in Markdown…"
+                        >{article.body}</textarea>
+                        <div
+                            class="studio-preview"
+                            id="body-preview"
+                            aria-label="Live preview"
+                        >
+                            <p class="studio-preview__empty">
+                                Your preview will appear here as you type…
+                            </p>
+                        </div>
+                    </div>
+
+                    <div
+                        class="studio-wordcount"
+                        id="wordcount"
+                        aria-live="polite"
+                    >
+                        <span>
+                            <strong id="wc-words">0</strong> words
+                        </span>
+                        <span>
+                            <strong id="wc-minutes">0</strong> min read
+                        </span>
+                        <span id="wc-warning"></span>
+                    </div>
                 </div>
             </section>
 
@@ -469,6 +616,8 @@ const allSlugs = posts.map((post) => post.id);
         serializeArticle,
         type ArticleData,
     } from "../../lib/studio/github";
+    import { showToast } from "../../lib/studio/toast";
+    import { renderMarkdown } from "../../lib/studio/markdown";
 
     const form = document.getElementById(
         "studio-editor-form",
@@ -511,6 +660,339 @@ const allSlugs = posts.map((post) => post.id);
 
     let pendingImage: { base64: string; name: string } | null = null;
     let slugEdited = Boolean(slugInput?.value);
+
+    /* ------------------------------------------------------------------ */
+    /* Phase 3 — live preview, word count, autosave, shortcuts, toolbar    */
+    /* ------------------------------------------------------------------ */
+
+    const bodyInput = document.getElementById(
+        "field-body",
+    ) as HTMLTextAreaElement | null;
+    const editorGrid = document.getElementById(
+        "editor-grid",
+    ) as HTMLElement | null;
+    const previewEl = document.getElementById(
+        "body-preview",
+    ) as HTMLElement | null;
+    const wcWords = document.getElementById(
+        "wc-words",
+    ) as HTMLElement | null;
+    const wcMinutes = document.getElementById(
+        "wc-minutes",
+    ) as HTMLElement | null;
+    const wcWarning = document.getElementById(
+        "wc-warning",
+    ) as HTMLElement | null;
+    const viewButtons =
+        document.querySelectorAll<HTMLButtonElement>("[data-view]");
+    const toolbarButtons =
+        document.querySelectorAll<HTMLButtonElement>("[data-md]");
+
+    let dirty = false;
+    let saving = false;
+    let autosaveTimer = 0;
+    const AUTOSAVE_KEY = "studio-editor-autosave";
+    const saveBtn = document.getElementById(
+        "save-draft-btn",
+    ) as HTMLButtonElement | null;
+    const publishBtn = document.getElementById(
+        "publish-btn",
+    ) as HTMLButtonElement | null;
+
+    function markDirty() {
+        dirty = true;
+    }
+
+    /* ---- Live preview + word count ---- */
+    function renderPreview() {
+        if (!previewEl) return;
+        const md = bodyInput?.value ?? "";
+        previewEl.innerHTML = md.trim()
+            ? renderMarkdown(md)
+            : `<p class="studio-preview__empty">Your preview will appear here as you type…</p>`;
+    }
+
+    function updateWordCount() {
+        if (!bodyInput || !wcWords || !wcMinutes) return;
+        const text = bodyInput.value;
+        const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+        wcWords.textContent = words.toLocaleString();
+        wcMinutes.textContent = String(Math.max(1, Math.ceil(words / 200)));
+        if (wcWarning) {
+            const tooShort = words > 0 && words < 300;
+            wcWarning.textContent = tooShort
+                ? "Aim for 300+ words — shorter posts rank poorly."
+                : "";
+            wcWarning.className = tooShort ? "is-warning" : "";
+        }
+    }
+
+    /* ---- View toggle (Write / Split / Preview) ---- */
+    viewButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            const view = button.dataset.view || "write";
+            viewButtons.forEach((b) =>
+                b.classList.toggle("is-active", b === button),
+            );
+            editorGrid?.classList.toggle("is-split", view === "split");
+            editorGrid?.classList.toggle("is-preview", view === "preview");
+            if (view === "split" || view === "preview") renderPreview();
+        });
+    });
+
+    /* ---- Markdown toolbar ---- */
+    const MD_SNIPPETS: Record<string, [string, string, string]> = {
+        bold: ["**", "**", "bold text"],
+        italic: ["*", "*", "italic text"],
+        code: ["`", "`", "code"],
+        link: ["[", "](https://example.com)", "link text"],
+        image: ["![", "](/images/articles/image.png)", "alt text"],
+        h2: ["## ", "", "Heading"],
+        list: ["- ", "", "List item"],
+        quote: ["> ", "", "Quoted text"],
+        hr: ["\n---\n", "", ""],
+    };
+
+    function insertAtCursor(
+        textarea: HTMLTextAreaElement,
+        before: string,
+        after: string,
+        placeholder: string,
+    ) {
+        const start = textarea.selectionStart ?? textarea.value.length;
+        const end = textarea.selectionEnd ?? textarea.value.length;
+        const selected =
+            textarea.value.slice(start, end) || placeholder;
+        textarea.setRangeText(before + selected + after, start, end, "end");
+        textarea.focus();
+        const newPos = start + before.length + selected.length;
+        textarea.setSelectionRange(newPos, newPos);
+        textarea.dispatchEvent(
+            new Event("input", { bubbles: true }),
+        );
+    }
+
+    toolbarButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            const kind = button.dataset.md;
+            if (!kind || !bodyInput) return;
+            const [before, after, placeholder] =
+                MD_SNIPPETS[kind] ?? ["", "", ""];
+            insertAtCursor(bodyInput, before, after, placeholder);
+        });
+    });
+
+    /* ---- Autosave (sessionStorage) + restore bar ---- */
+    interface EditorDraft {
+        savedAt: string;
+        form: Record<string, string>;
+    }
+
+    function collectAutosave(): EditorDraft | null {
+        if (!form) return null;
+        const data = new FormData(form);
+        const out: Record<string, string> = {};
+        for (const [key, value] of data.entries()) {
+            if (value instanceof File) continue;
+            out[key] = value;
+        }
+        return { savedAt: new Date().toISOString(), form: out };
+    }
+
+    function writeAutosave() {
+        const draft = collectAutosave();
+        if (!draft) return;
+        try {
+            window.sessionStorage.setItem(
+                AUTOSAVE_KEY,
+                JSON.stringify(draft),
+            );
+        } catch {
+            // storage full or blocked — autosave is best-effort
+        }
+    }
+
+    function clearAutosave() {
+        try {
+            window.sessionStorage.removeItem(AUTOSAVE_KEY);
+        } catch {
+            // ignore
+        }
+    }
+
+    function scheduleAutosave() {
+        window.clearTimeout(autosaveTimer);
+        autosaveTimer = window.setTimeout(writeAutosave, 1200);
+    }
+
+    function restoreAutosave() {
+        let raw: string | null = null;
+        try {
+            raw = window.sessionStorage.getItem(AUTOSAVE_KEY);
+        } catch {
+            return;
+        }
+        if (!raw) return;
+        try {
+            const draft = JSON.parse(raw) as EditorDraft;
+            for (const [key, value] of Object.entries(draft.form)) {
+                const input = form?.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+                    `[name="${key}"]`,
+                );
+                if (!input) continue;
+                if (input instanceof HTMLInputElement && input.type === "file") {
+                    continue;
+                }
+                if (input instanceof HTMLInputElement && input.type === "checkbox") {
+                    input.checked = value === "on";
+                } else {
+                    input.value = value;
+                }
+            }
+            updateWordCount();
+            renderPreview();
+            markDirty();
+            // A restored slug must not be silently overwritten by the title
+            // auto-fill listener.
+            if (slugInput && slugInput.value.trim()) slugEdited = true;
+            setStatus(
+                "Unsaved draft restored — review before saving.",
+                "info",
+            );
+        } catch {
+            clearAutosave();
+        }
+    }
+
+    function showRestoreBar(savedAt: string) {
+        document.getElementById("autosave-restore")?.remove();
+        const bar = document.createElement("div");
+        bar.className = "studio-restore";
+        bar.id = "autosave-restore";
+        const time = new Date(savedAt).toLocaleString(undefined, {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+        });
+        bar.innerHTML = `<p><strong>Unsaved draft found</strong> from ${time} — restore it to keep working.</p>`;
+
+        const restoreBtn = document.createElement("button");
+        restoreBtn.type = "button";
+        restoreBtn.className = "studio-button studio-button--sm";
+        restoreBtn.textContent = "Restore draft";
+        restoreBtn.addEventListener("click", () => {
+            restoreAutosave();
+            bar.remove();
+            showToast("Draft restored", "success");
+        });
+
+        const discardBtn = document.createElement("button");
+        discardBtn.type = "button";
+        discardBtn.className =
+            "studio-button studio-button--secondary studio-button--sm";
+        discardBtn.textContent = "Discard";
+        discardBtn.addEventListener("click", () => {
+            clearAutosave();
+            bar.remove();
+            showToast("Draft discarded", "info");
+        });
+
+        bar.append(restoreBtn, discardBtn);
+        form?.prepend(bar);
+    }
+
+    // Offer to restore a local draft on new articles only — existing
+    // articles load fresh from GitHub, which is always authoritative.
+    if (!new URLSearchParams(window.location.search).get("slug")) {
+        try {
+            const raw = window.sessionStorage.getItem(AUTOSAVE_KEY);
+            if (raw) {
+                const draft = JSON.parse(raw) as EditorDraft;
+                const hasContent = Object.values(draft.form || {}).some(
+                    (value) => String(value).trim().length > 0,
+                );
+                if (hasContent) showRestoreBar(draft.savedAt);
+            }
+        } catch {
+            // ignore — no autosave to restore
+        }
+    }
+
+    /* ---- Editor defaults from Settings (new articles only) ---- */
+    if (!new URLSearchParams(window.location.search).get("slug")) {
+        try {
+            const raw = window.sessionStorage.getItem(
+                "studio-editor-defaults",
+            );
+            if (raw) {
+                const defaults = JSON.parse(raw) as Record<string, string>;
+                const fill = (id: string, value: string | undefined) => {
+                    if (!value) return;
+                    const el = document.getElementById(
+                        id,
+                    ) as HTMLInputElement | null;
+                    if (el && !el.value.trim()) el.value = value;
+                };
+                fill("field-category", defaults.category);
+                fill("field-tags", defaults.tags);
+                if (defaults.author) {
+                    const authorSelect = document.getElementById(
+                        "field-author",
+                    ) as HTMLSelectElement | null;
+                    if (
+                        authorSelect &&
+                        [...authorSelect.options].some(
+                            (option) => option.value === defaults.author,
+                        )
+                    ) {
+                        authorSelect.value = defaults.author;
+                    }
+                }
+            }
+        } catch {
+            // ignore — defaults are optional
+        }
+    }
+
+    /* ---- Dirty-state warnings ---- */
+    form?.addEventListener("input", () => {
+        dirty = true;
+        scheduleAutosave();
+        updateWordCount();
+        renderPreview();
+    });
+
+    form?.addEventListener("change", () => {
+        dirty = true;
+        scheduleAutosave();
+    });
+
+    window.addEventListener("beforeunload", (event) => {
+        if (!dirty) return;
+        event.preventDefault();
+        event.returnValue = "";
+    });
+
+    // Confirm before leaving to another Studio page with unsaved changes.
+    document.addEventListener("click", (event) => {
+        if (!dirty) return;
+        const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>(
+            "a[href]",
+        );
+        if (!anchor) return;
+        if (form?.contains(anchor)) return; // in-form links (Preview) are fine
+        const href = anchor.getAttribute("href") || "";
+        if (!href || href.startsWith("#")) return;
+        if (
+            !window.confirm(
+                "You have unsaved changes. Leave anyway?",
+            )
+        ) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    });
 
     /* ------------------------------------------------------------------ */
     /* Client-side article loading for edit / duplicate mode                */
@@ -726,6 +1208,8 @@ const allSlugs = posts.map((post) => post.id);
             if (featuredCb) featuredCb.checked = Boolean(fm.featured);
             const draftCb = editorForm.querySelector<HTMLInputElement>('input[name="draft"]');
             if (draftCb) draftCb.checked = urlDuplicate ? true : Boolean(fm.draft);
+            const archivedCb = editorForm.querySelector<HTMLInputElement>('input[name="archived"]');
+            if (archivedCb) archivedCb.checked = urlDuplicate ? false : Boolean(fm.archived);
 
             // Hidden hero image path
             const heroHidden = editorForm.querySelector<HTMLInputElement>('input[name="heroImage"]');
@@ -773,6 +1257,9 @@ const allSlugs = posts.map((post) => post.id);
                     : `Loaded "${urlSlug}" — make your changes and save.`,
                 "info",
             );
+            dirty = false;
+            updateWordCount();
+            renderPreview();
         } catch (err) {
             const statusCode = (err as { status?: number })?.status;
             if (apiMode && statusCode === 401) {
@@ -808,12 +1295,14 @@ const allSlugs = posts.map((post) => post.id);
         showPreview(`${base}${existingHero}`, "Current hero image");
     }
 
-    heroFile?.addEventListener("change", () => {
-        const file = heroFile.files?.[0];
+    function handleHeroFile(file: File | undefined) {
         if (!file) return;
         if (!file.type.startsWith("image/")) {
-            setStatus("Please choose an image file (PNG, JPG, WebP or GIF).", "error");
-            heroFile.value = "";
+            setStatus(
+                "Please choose an image file (PNG, JPG, WebP or GIF).",
+                "error",
+            );
+            if (heroFile) heroFile.value = "";
             return;
         }
         const objectUrl = URL.createObjectURL(file);
@@ -825,6 +1314,34 @@ const allSlugs = posts.map((post) => post.id);
             pendingImage = { base64, name: file.name };
         });
         removeHeroBtn?.removeAttribute("hidden");
+        // File inputs don't fire "input" events — mark the form dirty here so
+        // the beforeunload warning and autosave catch hero image changes too.
+        markDirty();
+        scheduleAutosave();
+    }
+
+    heroFile?.addEventListener("change", () => {
+        const file = heroFile.files?.[0];
+        handleHeroFile(file);
+        if (heroFile) heroFile.value = "";
+    });
+
+    // Drag & drop onto the hero image control.
+    const heroDropZone = document.querySelector<HTMLElement>(
+        ".studio-file-input",
+    );
+    heroDropZone?.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        heroDropZone.classList.add("is-dragging");
+    });
+    heroDropZone?.addEventListener("dragleave", () => {
+        heroDropZone.classList.remove("is-dragging");
+    });
+    heroDropZone?.addEventListener("drop", (event) => {
+        event.preventDefault();
+        heroDropZone.classList.remove("is-dragging");
+        const file = event.dataTransfer?.files?.[0];
+        handleHeroFile(file);
     });
 
     removeHeroBtn?.addEventListener("click", () => {
@@ -837,6 +1354,8 @@ const allSlugs = posts.map((post) => post.id);
         heroPreview?.setAttribute("hidden", "");
         removeHeroBtn?.setAttribute("hidden", "");
         if (heroHint) heroHint.textContent = "No hero image will be saved.";
+        markDirty();
+        scheduleAutosave();
     });
 
     function showPreview(src: string, caption: string) {
@@ -895,6 +1414,15 @@ const allSlugs = posts.map((post) => post.id);
             'input[name="draft"]',
         );
         if (draftCheckbox) draftCheckbox.checked = draft;
+        // "Publish now" always un-archives; otherwise keep the user's choice.
+        const archived =
+            action === "publish"
+                ? false
+                : formData.get("archived") === "on";
+        const archivedCheckbox = form.querySelector<HTMLInputElement>(
+            'input[name="archived"]',
+        );
+        if (archivedCheckbox) archivedCheckbox.checked = archived;
         const updatedDate = String(formData.get("updatedDate") || "");
         const heroImage = String(formData.get("heroImage") || "");
         const featuredImageAlt = String(formData.get("featuredImageAlt") || "").trim();
@@ -947,6 +1475,7 @@ const allSlugs = posts.map((post) => post.id);
             tags,
             featured,
             draft,
+            archived: archived || undefined,
             heroImage: heroImage || undefined,
             featuredImageAlt: featuredImageAlt || undefined,
             seoTitle: seoTitle || undefined,
@@ -955,6 +1484,13 @@ const allSlugs = posts.map((post) => post.id);
         };
 
         const mdPath = `src/content/articles/${slug}.md`;
+
+        // Guard against double submits (Ctrl+S spam / double-click): two
+        // concurrent PUTs reading the same sha would conflict on GitHub.
+        if (saving) return;
+        saving = true;
+        if (saveBtn) saveBtn.disabled = true;
+        if (publishBtn) publishBtn.disabled = true;
 
         setStatus(
             action === "publish"
@@ -1008,7 +1544,21 @@ const allSlugs = posts.map((post) => post.id);
                 `✓ ${verb}. Pushed to GitHub — the live site rebuilds automatically in a few minutes.`,
                 "success",
             );
+            showToast(
+                action === "publish"
+                    ? "Article published — the site rebuilds in a few minutes"
+                    : "Draft saved to GitHub",
+                "success",
+            );
+            clearAutosave();
+            dirty = false;
+            saving = false;
+            if (saveBtn) saveBtn.disabled = false;
+            if (publishBtn) publishBtn.disabled = false;
         } catch (err) {
+            saving = false;
+            if (saveBtn) saveBtn.disabled = false;
+            if (publishBtn) publishBtn.disabled = false;
             const statusCode = (err as { status?: number })?.status;
             if (apiMode && statusCode === 401) {
                 setStatus(
@@ -1037,7 +1587,7 @@ const allSlugs = posts.map((post) => post.id);
         void getSession().then((session) => {
             if (!session?.authenticated) {
                 setStatus(
-                    "You are not signed in — the editor will redirect you to GitHub sign-in before loading or saving.",
+                    "You are not signed in — the editor will redirect you to sign in before loading or saving.",
                     "info",
                 );
             }
@@ -1049,5 +1599,40 @@ const allSlugs = posts.map((post) => post.id);
         const submitter = event.submitter as HTMLButtonElement | null;
         const action = submitter?.value === "publish" ? "publish" : "save";
         void saveArticle(action);
+    });
+
+    /* ---- Keyboard shortcuts ---- */
+    document.addEventListener("keydown", (event) => {
+        const mod = event.ctrlKey || event.metaKey;
+        if (!mod) return;
+        const key = event.key.toLowerCase();
+
+        // Ctrl/Cmd+S → save draft · Ctrl/Cmd+Shift+S → publish now
+        if (key === "s") {
+            event.preventDefault();
+            void saveArticle(event.shiftKey ? "publish" : "save");
+            return;
+        }
+
+        // Markdown formatting while the cursor is in the body editor
+        if (!bodyInput || document.activeElement !== bodyInput) return;
+        if (key === "b") {
+            event.preventDefault();
+            insertAtCursor(bodyInput, "**", "**", "bold text");
+        } else if (key === "i") {
+            event.preventDefault();
+            insertAtCursor(bodyInput, "*", "*", "italic text");
+        } else if (key === "k") {
+            event.preventDefault();
+            insertAtCursor(
+                bodyInput,
+                "[",
+                "](https://example.com)",
+                "link text",
+            );
+        } else if (key === "e") {
+            event.preventDefault();
+            insertAtCursor(bodyInput, "`", "`", "code");
+        }
     });
 </script>

@@ -76,7 +76,9 @@ const navItems = [
         window.location.assign(`${base}/studio/login`);
     });
 
-    // Show the signed-in GitHub user in the sidebar footer (OAuth mode)
+    // Show the signed-in user in the sidebar footer (team / OAuth mode).
+    // The API returns { login } (OAuth) or { username } (team); getSession
+    // normalizes both to user.login.
     const roleCard = document.querySelector<HTMLElement>(
         ".studio-card[data-role-card]",
     );
@@ -86,12 +88,12 @@ const navItems = [
             .then((res) => res.json())
             .then((data) => {
                 if (data?.authenticated && data?.user) {
-                    const login = data.user.login || "";
+                    const login = data.user.login || data.user.username || "";
                     const label = roleCard.querySelector("strong");
-                    if (label) label.textContent = `@${login}`;
+                    if (label) label.textContent = login ? `@${login}` : "Editor";
                     const note = roleCard.querySelector("p");
                     if (note) {
-                        note.textContent = `Signed in via GitHub. Edits commit to the live repository.`;
+                        note.textContent = `Signed in to the Studio. Edits commit to the live repository.`;
                     }
                 }
             })
@@ -250,21 +252,81 @@ const navItems = [
             border-right: 0;
             border-bottom: 1px solid var(--color-border);
             height: auto;
-            position: static;
-            padding-bottom: 1.25rem;
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            padding-bottom: 1rem;
         }
 
         .studio-sidebar__footer {
             margin-top: 0;
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .studio-sidebar__footer .studio-card {
+            flex: 1 1 100%;
         }
 
         .studio-nav {
             flex-direction: row;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            gap: 0.35rem;
+            padding-bottom: 0.25rem;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .studio-nav::-webkit-scrollbar {
+            display: none;
+        }
+
+        .studio-nav a {
+            white-space: nowrap;
+            padding: 0.7rem 0.9rem;
         }
 
         .studio-main {
             padding: 1.25rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .studio-sidebar {
+            padding: 1rem 0.9rem;
+        }
+
+        .studio-brand {
+            gap: 0.6rem;
+        }
+
+        .studio-brand__mark {
+            width: 2.25rem;
+            height: 2.25rem;
+            font-size: 0.85rem;
+        }
+
+        .studio-brand h1 {
+            font-size: 0.95rem;
+        }
+
+        .studio-brand__eyebrow {
+            font-size: 0.66rem;
+        }
+
+        .studio-nav a {
+            padding: 0.6rem 0.75rem;
+            font-size: 0.92rem;
+        }
+
+        .studio-card {
+            padding: 0.8rem;
+        }
+
+        .studio-main {
+            padding: 1rem 0.9rem;
         }
     }
 </style>

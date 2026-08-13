@@ -1,11 +1,13 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import StudioShell from "../../components/studio/StudioShell.astro";
-import { hasApi } from "../../lib/studio/github";
+import { hasApi, getAuthMode } from "../../lib/studio/github";
 
 // Build-safe: hasApi() returns false when PUBLIC_STUDIO_API_URL is unset,
 // so the missing variable can never break the build or this page.
-const hasOAuth = hasApi();
+const hasRemote = hasApi();
+const authMode = getAuthMode();
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 ---
 
 <BaseLayout
@@ -32,16 +34,16 @@ const hasOAuth = hasApi();
                 </div>
 
                 {
-                    hasOAuth && (
+                    hasRemote && (
                         <div
                             class="studio-panel studio-oauth-status"
                             id="oauth-status"
                         >
                             <div class="studio-panel__header">
-                                <h3>GitHub OAuth</h3>
+                                <h3>Account</h3>
                             </div>
                             <p class="studio-lead" id="oauth-status-text">
-                                Checking your GitHub session…
+                                Checking your session…
                             </p>
                             <div class="studio-form__actions">
                                 <a
@@ -50,7 +52,9 @@ const hasOAuth = hasApi();
                                     href="/studio/login"
                                     hidden
                                 >
-                                    Log in with GitHub
+                                    {authMode === "oauth"
+                                        ? "Log in with GitHub"
+                                        : "Log in to Studio"}
                                 </a>
                                 <button
                                     class="studio-button studio-button--secondary"
@@ -65,7 +69,29 @@ const hasOAuth = hasApi();
                     )
                 }
 
-                <form id="github-settings-form" class="studio-form" hidden={hasOAuth}>
+                {
+                    hasRemote && authMode === "team" && (
+                        <div class="studio-panel">
+                            <div class="studio-panel__header">
+                                <h3>New editors</h3>
+                            </div>
+                            <p class="studio-lead">
+                                Share the registration link with your team:
+                                anyone with the invite code can create an
+                                account and instantly publish through the
+                                shared token. Rotate the invite code in the
+                                Vercel project settings whenever you want to
+                                close the door.
+                            </p>
+                            <p class="studio-lead">
+                                Registration link:{" "}
+                                <code>{`${base}/studio/login`}</code>
+                            </p>
+                        </div>
+                    )
+                }
+
+                <form id="github-settings-form" class="studio-form" hidden={hasRemote}>
                     <div class="studio-field">
                         <label for="gh-token">
                             Personal access token
@@ -166,22 +192,64 @@ const hasOAuth = hasApi();
 
             <article class="studio-panel">
                 <div class="studio-panel__header">
-                    <h3>Brand defaults</h3>
+                    <h3>Editor defaults</h3>
                 </div>
                 <p class="studio-lead">
-                    Set preferred tone, author signature, and default category
-                    templates.
+                    Pre-filled values for new articles. Stored on this device
+                    only — you can still override them per article.
                 </p>
-            </article>
-
-            <article class="studio-panel">
-                <div class="studio-panel__header">
-                    <h3>SEO defaults</h3>
-                </div>
-                <p class="studio-lead">
-                    Configure meta templates, focus keywords, and internal link
-                    suggestions.
-                </p>
+                <form
+                    id="defaults-form"
+                    class="studio-form"
+                    style="margin-top: 1rem"
+                >
+                    <div class="studio-field-row">
+                        <div class="studio-field">
+                            <label for="default-category">
+                                Default category
+                            </label>
+                            <input
+                                id="default-category"
+                                name="category"
+                                type="text"
+                                placeholder="e.g. Cybersecurity"
+                                autocomplete="off"
+                            />
+                        </div>
+                        <div class="studio-field">
+                            <label for="default-author">Default author</label>
+                            <input
+                                id="default-author"
+                                name="author"
+                                type="text"
+                                placeholder="Israel Alabi"
+                                autocomplete="off"
+                            />
+                        </div>
+                    </div>
+                    <div class="studio-field">
+                        <label for="default-tags">
+                            Default tags (comma separated)
+                        </label>
+                        <input
+                            id="default-tags"
+                            name="tags"
+                            type="text"
+                            placeholder="Security, Privacy"
+                            autocomplete="off"
+                        />
+                    </div>
+                    <div
+                        class="studio-status"
+                        id="defaults-status"
+                        aria-live="polite"
+                    ></div>
+                    <div class="studio-form__actions">
+                        <button class="studio-button" type="submit">
+                            Save defaults
+                        </button>
+                    </div>
+                </form>
             </article>
         </section>
     </StudioShell>
@@ -196,12 +264,14 @@ const hasOAuth = hasApi();
         getLoginUrl,
         signOut,
         getApiBase,
+        getAuthMode,
         DEFAULT_OWNER,
         DEFAULT_REPO,
         DEFAULT_BRANCH,
     } from "../../lib/studio/github";
 
     const apiBase = getApiBase();
+    const authMode = getAuthMode();
     const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
     const form = document.getElementById(
@@ -227,8 +297,10 @@ const hasOAuth = hasApi();
         void getSession().then((session) => {
             if (oauthStatusText) {
                 oauthStatusText.textContent = session?.authenticated
-                    ? `Signed in as ${session.user?.name || session.user?.login || "GitHub user"} (@${session.user?.login || "—"}). Saves and publishes commit to the live repository through the Studio API.`
-                    : "Not signed in. Log in with GitHub to connect the Studio to the live repository.";
+                    ? `Signed in as @${session.user?.login || "studio user"}. Saves and publishes commit to the live repository through the Studio API.`
+                    : authMode === "oauth"
+                        ? "Not signed in. Log in with GitHub to connect the Studio to the live repository."
+                        : "Not signed in. Log in with your Studio account to connect the Studio to the live repository.";
             }
             if (oauthLoginBtn) {
                 oauthLoginBtn.hidden = session?.authenticated === true;
@@ -244,6 +316,63 @@ const hasOAuth = hasApi();
         oauthLogoutBtn?.addEventListener("click", async () => {
             await signOut();
             window.location.reload();
+        });
+    }
+
+    /* ---- Editor defaults (per-device) ---- */
+    const defaultsForm = document.getElementById(
+        "defaults-form",
+    ) as HTMLFormElement | null;
+    const defaultsStatus = document.getElementById(
+        "defaults-status",
+    ) as HTMLElement | null;
+    const DEFAULTS_KEY = "studio-editor-defaults";
+
+    if (defaultsForm && defaultsStatus) {
+        const categoryInput = document.getElementById(
+            "default-category",
+        ) as HTMLInputElement;
+        const authorInput = document.getElementById(
+            "default-author",
+        ) as HTMLInputElement;
+        const tagsInput = document.getElementById(
+            "default-tags",
+        ) as HTMLInputElement;
+
+        // Pre-fill from stored defaults
+        try {
+            const raw = window.sessionStorage.getItem(DEFAULTS_KEY);
+            if (raw) {
+                const stored = JSON.parse(raw) as Record<string, string>;
+                categoryInput.value = stored.category ?? "";
+                authorInput.value = stored.author ?? "";
+                tagsInput.value = stored.tags ?? "";
+            }
+        } catch {
+            // ignore
+        }
+
+        defaultsForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const defaults = {
+                category: categoryInput.value.trim(),
+                author: authorInput.value.trim(),
+                tags: tagsInput.value.trim(),
+            };
+            try {
+                window.sessionStorage.setItem(
+                    DEFAULTS_KEY,
+                    JSON.stringify(defaults),
+                );
+            } catch {
+                defaultsStatus.className = "studio-status studio-status--error";
+                defaultsStatus.textContent =
+                    "Couldn't save defaults (storage unavailable).";
+                return;
+            }
+            defaultsStatus.className = "studio-status studio-status--success";
+            defaultsStatus.textContent =
+                "Defaults saved — new articles will start with these values.";
         });
     }
 

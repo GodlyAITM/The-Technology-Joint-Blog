@@ -19,22 +19,63 @@ const base = import.meta.env.BASE_URL;
                 type="button"
                 data-theme-choice="light"
                 aria-pressed="false"
+                title="Light theme"
             >
-                Light
+                <svg
+                    class="theme-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                >
+                    <circle cx="12" cy="12" r="4"></circle>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+                </svg>
+                <span class="theme-label">Light</span>
             </button>
             <button
                 type="button"
                 data-theme-choice="dark"
                 aria-pressed="false"
+                title="Dark theme"
             >
-                Dark
+                <svg
+                    class="theme-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                >
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+                <span class="theme-label">Dark</span>
             </button>
             <button
                 type="button"
                 data-theme-choice="system"
                 aria-pressed="false"
+                title="Follow system theme"
             >
-                System
+                <svg
+                    class="theme-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                >
+                    <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                    <path d="M8 21h8M12 17v4"></path>
+                </svg>
+                <span class="theme-label">System</span>
             </button>
         </div>
     </div>
@@ -102,9 +143,21 @@ const base = import.meta.env.BASE_URL;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        gap: 0.4rem;
         transition:
             background var(--transition),
-            color var(--transition);
+            color var(--transition),
+            transform 120ms ease;
+    }
+
+    .theme-icon {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+    .theme-switch button:active {
+        transform: scale(0.94);
     }
 
     .theme-switch button.is-active {
@@ -117,15 +170,23 @@ const base = import.meta.env.BASE_URL;
         color: var(--color-primary);
     }
 
-    @media (max-width: 480px) {
-        .theme-switch button {
-            font-size: 0.72rem;
-            padding: 0.4rem 0.55rem;
-            min-height: 40px;
-        }
-    }
-
     @media (max-width: 768px) {
+        /* Icon-only compact toggle, placed beside the hamburger
+           (the site-nav gets order: 3 in Navigation.astro). */
+        .theme-switch {
+            order: 2;
+        }
+
+        .theme-switch button {
+            padding: 0.5rem;
+            min-height: 42px;
+            width: 42px;
+        }
+
+        .theme-label {
+            display: none;
+        }
+
         .logo {
             min-width: 0;
             gap: 0.5rem;
@@ -142,6 +203,21 @@ const base = import.meta.env.BASE_URL;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+    }
+
+    @media (max-width: 480px) {
+        /* Full-width segmented bar on its own row for very small screens. */
+        .theme-switch {
+            order: 4;
+            width: 100%;
+            justify-content: center;
+            margin-top: 0.4rem;
+        }
+
+        .theme-switch button {
+            flex: 1 1 auto;
+            max-width: 160px;
         }
     }
 </style>

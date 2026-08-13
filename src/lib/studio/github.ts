@@ -1,16 +1,21 @@
 /**
  * Client-side GitHub API helpers for the Studio workspace.
  *
- * Two transport modes:
+ * Transport modes:
  *
  *  1. PAT mode (default): the GitHub Contents API is called directly from
  *     the browser using a personal access token stored in sessionStorage
  *     (set in Studio → Settings). No server required.
  *
- *  2. OAuth mode (optional): when `PUBLIC_STUDIO_API_URL` is set, GitHub
- *     calls are proxied through the Studio API worker (/api/gh/*). The
- *     worker holds the GitHub access token server-side and authenticates
- *     via an HttpOnly session cookie. Not required for the default setup.
+ *  2. Team mode (default when `PUBLIC_STUDIO_API_URL` is set): GitHub
+ *     calls are proxied through the team-login API (/api/gh/*). The API
+ *     holds ONE shared GitHub token server-side; editors get access by
+ *     registering a username/password (with an invite code). No GitHub
+ *     accounts or tokens needed per person.
+ *
+ *  3. OAuth mode (optional): same proxy as team mode but authenticates
+ *     through GitHub OAuth instead of username/password accounts. Set
+ *     `PUBLIC_STUDIO_AUTH_MODE` to "oauth" to enable.
  */
 
 export interface StudioConfig {
@@ -32,6 +37,8 @@ export interface ArticleData {
     tags: string[];
     featured: boolean;
     draft: boolean;
+    /** Archived articles are hidden from the public site (kept in the Studio). */
+    archived?: boolean;
     heroImage?: string;
     featuredImageAlt?: string;
     seoTitle?: string;
@@ -44,6 +51,28 @@ export interface ArticleData {
 // "always require login" policy.
 const STORAGE_KEY = "studio-github-config";
 const API = "https://api.github.com";
+
+export type StudioAuthMode = "pat" | "team" | "oauth";
+
+/**
+ * Which authentication flow the Studio uses:
+ *  - "pat"   — per-device personal access token (no API configured)
+ *  - "team"  — shared-token username/password accounts (default when an
+ *              API URL is configured; set PUBLIC_STUDIO_AUTH_MODE=team)
+ *  - "oauth" — GitHub OAuth via the optional Cloudflare worker
+ *
+ * Build-safe: unset env vars fall back to the defaults below, so the
+ * missing variable can never break the build.
+ */
+export function getAuthMode(): StudioAuthMode {
+    if (!getApiBase()) return "pat";
+    const mode = (
+        import.meta.env.PUBLIC_STUDIO_AUTH_MODE as string | undefined
+    )
+        ?.trim()
+        .toLowerCase();
+    return mode === "oauth" ? "oauth" : "team";
+}
 
 export const DEFAULT_OWNER = "godlyaitm";
 export const DEFAULT_REPO = "The-Technology-Joint-Blog";
@@ -75,6 +104,7 @@ export function getStudioConfig(): StudioConfig | null {
             repo: parsed.repo,
             branch: parsed.branch || DEFAULT_BRANCH,
             token: parsed.token,
+            analyticsDomain: parsed.analyticsDomain,
         };
     } catch {
         return null;
@@ -99,7 +129,7 @@ export interface StudioSession {
     scope?: string;
 }
 
-/** Ask the worker whether the current browser has a valid session. */
+/** Ask the API whether the current browser has a valid session. */
 export async function getSession(): Promise<StudioSession | null> {
     const apiBase = getApiBase();
     if (!apiBase) return null;
@@ -109,7 +139,29 @@ export async function getSession(): Promise<StudioSession | null> {
             headers: { Accept: "application/json" },
         });
         if (!response.ok) return { authenticated: false };
-        return (await response.json()) as StudioSession;
+        const data = (await response.json()) as {
+            authenticated?: boolean;
+            user?: {
+                login?: string;
+                username?: string;
+                name?: string;
+                avatar_url?: string;
+            } | null;
+            scope?: string;
+        };
+        // Normalize: team mode returns { username }, OAuth mode returns
+        // { login }. Callers read `user.login` either way.
+        return {
+            authenticated: Boolean(data.authenticated),
+            user: data.user
+                ? {
+                      login: data.user.login ?? data.user.username ?? "",
+                      name: data.user.name,
+                      avatar_url: data.user.avatar_url,
+                  }
+                : null,
+            scope: data.scope,
+        };
     } catch {
         return { authenticated: false };
     }
@@ -129,13 +181,77 @@ export async function signOut(): Promise<void> {
     }
 }
 
-/** URL to start the GitHub OAuth flow, returning to `next` afterwards. */
+/**
+ * URL to send an unauthenticated visitor to for sign-in.
+ *  - OAuth mode: GitHub authorization flow on the API.
+ *  - Team mode: the Studio login page (username/password + registration).
+ */
 export function getLoginUrl(next?: string): string {
     const apiBase = getApiBase();
     if (!apiBase) return "/studio/login";
     const params = new URLSearchParams();
     if (next) params.set("next", next);
-    return `${apiBase}/api/auth/login${params.size ? `?${params.toString()}` : ""}`;
+    if (getAuthMode() === "oauth") {
+        return `${apiBase}/api/auth/login${params.size ? `?${params.toString()}` : ""}`;
+    }
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    return `${base}/studio/login${params.size ? `?${params.toString()}` : ""}`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Team-mode authentication (username/password + invite code)          */
+/* ------------------------------------------------------------------ */
+
+export interface TeamAuthResult {
+    ok: boolean;
+    error?: string;
+}
+
+async function teamAuth(
+    path: "/api/auth/login" | "/api/auth/register",
+    payload: Record<string, string>,
+): Promise<TeamAuthResult> {
+    const apiBase = getApiBase();
+    if (!apiBase) return { ok: false, error: "The Studio API is not configured." };
+    try {
+        const response = await fetch(`${apiBase}${path}`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+        const data = (await response.json().catch(() => ({}))) as {
+            error?: string;
+        };
+        if (!response.ok) {
+            return {
+                ok: false,
+                error:
+                    data.error ||
+                    `${path === "/api/auth/login" ? "Sign in" : "Registration"} failed (${response.status}).`,
+            };
+        }
+        return { ok: true };
+    } catch {
+        return { ok: false, error: "Could not reach the Studio API." };
+    }
+}
+
+/** Sign in with a Studio account (username/password). */
+export function teamLogin(
+    username: string,
+    password: string,
+): Promise<TeamAuthResult> {
+    return teamAuth("/api/auth/login", { username, password });
+}
+
+/** Create a Studio account with the invite code — signs in automatically. */
+export function teamRegister(
+    username: string,
+    password: string,
+    inviteCode: string,
+): Promise<TeamAuthResult> {
+    return teamAuth("/api/auth/register", { username, password, inviteCode });
 }
 
 /* ------------------------------------------------------------------ */
@@ -293,6 +409,77 @@ export async function putFile(
     );
 }
 
+/** One entry returned by the GitHub Contents API for a directory. */
+export interface StudioContentEntry {
+    name: string;
+    path: string;
+    sha: string;
+    size?: number;
+    type: "file" | "dir" | "symlink" | "submodule";
+    download_url?: string | null;
+}
+
+/**
+ * List the files in a repository directory (e.g. "public/images/articles").
+ * Returns an empty array for missing directories. Works in every auth mode.
+ */
+export async function listDirectory(
+    path: string,
+    options: { config?: StudioConfig } = {},
+): Promise<StudioContentEntry[]> {
+    const cfg = options.config ?? getStudioConfig();
+    if (!cfg && !hasApi()) return [];
+
+    try {
+        const data = await api<StudioContentEntry[] | StudioContentEntry>(
+            `/repos/${cfg?.owner ?? DEFAULT_OWNER}/${cfg?.repo ?? DEFAULT_REPO}/contents/${path}?ref=${encodeURIComponent(cfg?.branch ?? DEFAULT_BRANCH)}`,
+            undefined,
+            cfg ?? undefined,
+        );
+        return Array.isArray(data) ? data : [];
+    } catch (err) {
+        // Structured 404 (OAuth/team mode) or legacy message prefix (PAT mode)
+        if (err instanceof GitHubApiError && err.status === 404) return [];
+        if (err instanceof Error && /^GitHub API 404/.test(err.message)) {
+            return [];
+        }
+        throw err;
+    }
+}
+
+/**
+ * Delete a file from the repository (Contents API DELETE). Resolves the
+ * current sha itself, so callers only need the path. Returns false when the
+ * file does not exist.
+ */
+export async function deleteFile(
+    path: string,
+    message: string,
+    options: { config?: StudioConfig } = {},
+): Promise<boolean> {
+    const cfg = options.config ?? getStudioConfig();
+    if (!cfg && !hasApi()) return false;
+
+    const existing = await getFile(path, {
+        config: cfg ?? undefined,
+        decode: false,
+    });
+    if (!existing?.sha) return false;
+
+    const body: Record<string, string> = {
+        message,
+        sha: existing.sha,
+        branch: cfg?.branch ?? DEFAULT_BRANCH,
+    };
+
+    await api(
+        `/repos/${cfg?.owner ?? DEFAULT_OWNER}/${cfg?.repo ?? DEFAULT_REPO}/contents/${path}`,
+        { method: "DELETE", body: JSON.stringify(body) },
+        cfg ?? undefined,
+    );
+    return true;
+}
+
 /** Verify connectivity: OAuth session (worker) or token+repo (legacy). */
 export async function testGitHubConnection(
     config?: StudioConfig,
@@ -304,12 +491,14 @@ export async function testGitHubConnection(
         if (!session?.authenticated) {
             return {
                 ok: false,
-                message: "Not signed in. Sign in with GitHub to connect the Studio.",
+                message: "Not signed in. Sign in to connect the Studio.",
             };
         }
+        const via =
+            getAuthMode() === "oauth" ? "GitHub OAuth" : "Studio account";
         return {
             ok: true,
-            message: `Connected as ${session.user?.login ?? "GitHub user"} (via GitHub OAuth).`,
+            message: `Connected as ${session.user?.login || "a Studio user"} (via ${via}).`,
         };
     }
 
@@ -440,6 +629,7 @@ export function serializeArticle(
 
     lines.push(`featured: ${article.featured ? "true" : "false"}`);
     lines.push(`draft: ${article.draft ? "true" : "false"}`);
+    if (article.archived) lines.push("archived: true");
 
     if (article.heroImage) lines.push(`heroImage: ${yamlScalar(article.heroImage)}`);
     if (article.featuredImageAlt) {

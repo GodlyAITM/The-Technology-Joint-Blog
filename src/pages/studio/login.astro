@@ -1,16 +1,15 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { getApiBase } from "../../lib/studio/github";
+import { getAuthMode } from "../../lib/studio/github";
 
-// Build-safe: getApiBase() returns "" when PUBLIC_STUDIO_API_URL is unset,
-// so the missing variable can never break the build or the login page.
-const apiBase = getApiBase();
-const hasOAuth = Boolean(apiBase);
+// Build-safe: getAuthMode() returns "pat" when PUBLIC_STUDIO_API_URL is
+// unset, so the missing variable can never break the build or the login page.
+const authMode = getAuthMode();
 ---
 
 <BaseLayout
     title="Studio Login | The Technology Joint"
-    description="Sign in to the private Studio workspace with GitHub."
+    description="Sign in to the private Studio workspace."
 >
     <section class="login-shell">
         <div class="login-card">
@@ -18,7 +17,7 @@ const hasOAuth = Boolean(apiBase);
             <h1>Welcome to The Technology Joint Studio</h1>
 
             {
-                hasOAuth ? (
+                authMode === "oauth" ? (
                     <div id="login-oauth" class="login-oauth">
                         <a class="github-button" href="/studio/login">
                             <svg
@@ -34,14 +33,117 @@ const hasOAuth = Boolean(apiBase);
                         </a>
                         <p class="login-hint">
                             Sign in with GitHub to manage articles on the live
-                            site. The Studio only ever writes to The Technology
-                            Joint repository. You'll be redirected to GitHub to
-                            authorize the Studio app, and your session is
-                            stored in a secure cookie.
+                            site. You'll be redirected to GitHub to authorize
+                            the Studio app, and your session is stored in a
+                            secure cookie.
                         </p>
                         <div id="login-status" class="login-status" aria-live="polite">
                             Starting sign in…
                         </div>
+                    </div>
+                ) : authMode === "team" ? (
+                    <div id="login-team" class="login-oauth">
+                        <div class="login-tabs" role="tablist" aria-label="Studio access">
+                            <button
+                                class="login-tab is-active"
+                                type="button"
+                                role="tab"
+                                aria-selected="true"
+                                data-login-tab="signin"
+                            >
+                                Sign in
+                            </button>
+                            <button
+                                class="login-tab"
+                                type="button"
+                                role="tab"
+                                aria-selected="false"
+                                data-login-tab="register"
+                            >
+                                Create account
+                            </button>
+                        </div>
+
+                        <form id="team-signin-form" class="login-form" data-team-form="signin">
+                            <div class="login-field">
+                                <label for="team-username">Username</label>
+                                <input
+                                    id="team-username"
+                                    name="username"
+                                    type="text"
+                                    autocomplete="username"
+                                    placeholder="yourstudioalias"
+                                    autocapitalize="none"
+                                    spellcheck="false"
+                                    required
+                                />
+                            </div>
+                            <div class="login-field">
+                                <label for="team-password">Password</label>
+                                <input
+                                    id="team-password"
+                                    name="password"
+                                    type="password"
+                                    autocomplete="current-password"
+                                    minlength="8"
+                                    required
+                                />
+                            </div>
+                            <button class="login-submit" type="submit">
+                                Sign in to Studio
+                            </button>
+                        </form>
+
+                        <form id="team-register-form" class="login-form" hidden data-team-form="register">
+                            <div class="login-field">
+                                <label for="team-new-username">Username</label>
+                                <input
+                                    id="team-new-username"
+                                    name="username"
+                                    type="text"
+                                    autocomplete="username"
+                                    placeholder="3–32 chars: letters, numbers, . _ -"
+                                    autocapitalize="none"
+                                    spellcheck="false"
+                                    minlength="3"
+                                    maxlength="32"
+                                    required
+                                />
+                            </div>
+                            <div class="login-field">
+                                <label for="team-new-password">Password</label>
+                                <input
+                                    id="team-new-password"
+                                    name="password"
+                                    type="password"
+                                    autocomplete="new-password"
+                                    minlength="8"
+                                    maxlength="128"
+                                    required
+                                />
+                            </div>
+                            <div class="login-field">
+                                <label for="team-invite">Invite code</label>
+                                <input
+                                    id="team-invite"
+                                    name="inviteCode"
+                                    type="password"
+                                    autocomplete="off"
+                                    placeholder="Required to create an account"
+                                    required
+                                />
+                            </div>
+                            <button class="login-submit" type="submit">
+                                Create account
+                            </button>
+                        </form>
+
+                        <p class="login-hint" id="team-hint">
+                            Your editor account uses the site's shared
+                            publishing token — no GitHub account needed. The
+                            invite code comes from the site owner.
+                        </p>
+                        <div id="login-status" class="login-status" aria-live="polite"></div>
                     </div>
                 ) : (
                     <div id="login-local" class="login-oauth">
@@ -52,7 +154,9 @@ const hasOAuth = Boolean(apiBase);
                             you save in Studio → Settings.
                         </p>
                         <form id="studio-login-form" class="login-form">
-                            <button type="submit">Enter Studio</button>
+                            <button type="submit" class="login-submit">
+                                Enter Studio
+                            </button>
                         </form>
                         <div id="login-status" class="login-status" aria-live="polite">
                             Signing you in…
@@ -65,34 +169,112 @@ const hasOAuth = Boolean(apiBase);
 </BaseLayout>
 
 <script>
-    import { getApiBase } from "../../lib/studio/github";
+    import {
+        getApiBase,
+        getAuthMode,
+        teamLogin,
+        teamRegister,
+    } from "../../lib/studio/github";
 
     const apiBase = getApiBase();
+    const authMode = getAuthMode();
     const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+    const status = document.getElementById("login-status");
 
-    if (apiBase) {
+    // Resolve where to go after a successful sign-in, preserving deep
+    // links (e.g. /studio/editor?slug=...) passed as ?next=. Only same
+    // origin targets are accepted — an external ?next= (open redirect)
+    // falls back to the Studio dashboard.
+    function safeNext(value: string | null): string {
+        if (!value) return `${base}/studio`;
+        try {
+            const target = new URL(value, window.location.origin);
+            if (target.origin === window.location.origin) {
+                return target.toString();
+            }
+        } catch {
+            // fall through to the default
+        }
+        return `${base}/studio`;
+    }
+    const next = safeNext(
+        new URLSearchParams(window.location.search).get("next"),
+    );
+
+    function setStatus(message: string, kind: "info" | "error" = "info") {
+        if (!status) return;
+        status.className = "login-status";
+        if (kind === "error") status.classList.add("login-status--error");
+        status.textContent = message;
+    }
+
+    if (authMode === "oauth") {
         const link = document.querySelector<HTMLAnchorElement>(".github-button");
-        const status = document.getElementById("login-status");
-
         if (link && status) {
-            // Preserve the studio page the user came from (e.g. editor deep links).
-            // Resolve to an absolute URL — the worker's safeNext only accepts
-            // absolute targets on an allowed origin.
-            const rawNext =
-                new URLSearchParams(window.location.search).get("next") ||
-                `${base}/studio`;
-            const next = new URL(rawNext, window.location.origin).toString();
-            const loginUrl = new URL("/api/auth/login", apiBase);
+            const loginUrl = new URL("/api/auth/login", apiBase!);
             loginUrl.searchParams.set("next", next);
             link.href = loginUrl.toString();
             status.textContent = "Ready — click to sign in with GitHub.";
         }
+    } else if (authMode === "team") {
+        const tabs = document.querySelectorAll<HTMLButtonElement>("[data-login-tab]");
+        const forms = document.querySelectorAll<HTMLFormElement>("[data-team-form]");
+
+        tabs.forEach((tab) => {
+            tab.addEventListener("click", () => {
+                const mode = tab.dataset.loginTab;
+                tabs.forEach((t) => {
+                    const active = t === tab;
+                    t.classList.toggle("is-active", active);
+                    t.setAttribute("aria-selected", String(active));
+                });
+                forms.forEach((form) => {
+                    form.hidden = form.dataset.teamForm !== mode;
+                });
+                setStatus("");
+            });
+        });
+
+        const signin = document.getElementById(
+            "team-signin-form",
+        ) as HTMLFormElement | null;
+        signin?.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const username = String(
+                new FormData(signin).get("username") || "",
+            ).trim();
+            const password = String(new FormData(signin).get("password") || "");
+            setStatus("Signing in…");
+            const result = await teamLogin(username, password);
+            if (!result.ok) {
+                setStatus(result.error || "Sign in failed.", "error");
+                return;
+            }
+            window.location.assign(next);
+        });
+
+        const register = document.getElementById(
+            "team-register-form",
+        ) as HTMLFormElement | null;
+        register?.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const data = new FormData(register);
+            const username = String(data.get("username") || "").trim();
+            const password = String(data.get("password") || "");
+            const inviteCode = String(data.get("inviteCode") || "").trim();
+            setStatus("Creating account…");
+            const result = await teamRegister(username, password, inviteCode);
+            if (!result.ok) {
+                setStatus(result.error || "Registration failed.", "error");
+                return;
+            }
+            setStatus("Account created — signing you in…");
+            window.location.assign(next);
+        });
     } else {
         const form = document.getElementById(
             "studio-login-form",
         ) as HTMLFormElement | null;
-        const status = document.getElementById("login-status");
-
         if (form && status) {
             form.addEventListener("submit", (event) => {
                 event.preventDefault();
@@ -110,7 +292,7 @@ const hasOAuth = Boolean(apiBase);
         min-height: 100vh;
         display: grid;
         place-items: center;
-        padding: 2rem;
+        padding: 2rem 1rem;
         background: linear-gradient(
             135deg,
             var(--color-background),
@@ -136,7 +318,8 @@ const hasOAuth = Boolean(apiBase);
     }
 
     .login-card h1 {
-        margin: 0 0 0.75rem;
+        margin: 0 0 1.25rem;
+        font-size: 1.5rem;
     }
 
     .login-oauth {
@@ -179,6 +362,11 @@ const hasOAuth = Boolean(apiBase);
         font-size: 0.9rem;
     }
 
+    .login-status--error {
+        color: var(--color-danger);
+        font-weight: 600;
+    }
+
     .login-note {
         font-size: 0.9rem;
         line-height: 1.55;
@@ -196,6 +384,44 @@ const hasOAuth = Boolean(apiBase);
         );
     }
 
+    /* ---- Team mode tabs + forms ---- */
+
+    .login-tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.35rem;
+        padding: 0.35rem;
+        border: 1px solid var(--color-border);
+        border-radius: 999px;
+        background: var(--color-surface-alt);
+    }
+
+    .login-tab {
+        border: 0;
+        background: transparent;
+        color: var(--color-muted);
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.92rem;
+        padding: 0.6rem 0.75rem;
+        border-radius: 999px;
+        cursor: pointer;
+        min-height: 42px;
+        transition:
+            background var(--transition),
+            color var(--transition);
+    }
+
+    .login-tab.is-active {
+        background: var(--color-surface);
+        color: var(--color-text);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .login-tab:hover:not(.is-active) {
+        color: var(--color-primary);
+    }
+
     .login-form {
         display: flex;
         flex-direction: column;
@@ -203,15 +429,55 @@ const hasOAuth = Boolean(apiBase);
         margin-top: 0.5rem;
     }
 
-    .login-form button {
+    .login-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .login-field label {
+        font-weight: 600;
+        font-size: 0.92rem;
+    }
+
+    .login-field input {
+        width: 100%;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: 0.8rem 0.9rem;
+        font: inherit;
+        background: var(--color-background);
+        color: var(--color-text);
+        transition:
+            border-color var(--transition),
+            box-shadow var(--transition);
+    }
+
+    .login-field input:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px
+            color-mix(in srgb, var(--color-primary) 20%, transparent);
+    }
+
+    .login-submit {
         border: 0;
         border-radius: 999px;
         background: var(--color-primary);
-        color: white;
+        color: var(--color-on-primary);
         padding: 0.9rem 1rem;
+        font: inherit;
         font-weight: 700;
         cursor: pointer;
         min-height: 48px;
+        transition:
+            background var(--transition),
+            transform var(--transition);
+    }
+
+    .login-submit:hover {
+        background: var(--color-primary-dark);
+        transform: translateY(-1px);
     }
 
     @media (max-width: 480px) {

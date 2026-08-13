@@ -1,7 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 html {
-  font-size: 16px;
+  /* Fluid base type: gently scales down on small phones, never above 16px */
+  font-size: clamp(15px, calc(0.45vw + 14.3px), 16px);
 }
 
 body {
@@ -18,7 +19,7 @@ h1, h2, h3, h4, h5 {
 
 h1 { font-size: clamp(2.5rem, 5vw, 4rem); }
 h2 { font-size: clamp(2rem, 4vw, 3rem); }
-h3 { font-size: 1.5rem; }
+h3 { font-size: clamp(1.25rem, calc(0.65rem + 1.6vw), 1.5rem); }
 
 p {
   margin-bottom: var(--space-3);

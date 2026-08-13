@@ -10,6 +10,7 @@ const posts = (await getCollection("articles"))
     .map((post) => ({
         title: post.data.title,
         category: post.data.category,
+        tags: post.data.tags,
         status: getArticleStatus(post),
         pubDate: post.data.pubDate.toISOString(),
         scheduledLabel: post.data.pubDate.toLocaleString("en-US", {
@@ -59,7 +60,47 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
         <section class="studio-panel">
             <div class="studio-panel__header">
-                <h3>All articles ({posts.length})</h3>
+                <h3 id="article-count">All articles ({posts.length})</h3>
+            </div>
+
+            <div class="studio-filterbar">
+                <div class="studio-search">
+                    <span class="studio-search__icon" aria-hidden="true">
+                        <svg
+                            viewBox="0 0 24 24"
+                            width="16"
+                            height="16"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                        >
+                            <circle cx="11" cy="11" r="7"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                    </span>
+                    <input
+                        id="article-search"
+                        type="search"
+                        placeholder="Search by title, category or tag…"
+                        autocomplete="off"
+                    />
+                </div>
+                <div class="studio-filter" role="group" aria-label="Filter by status">
+                    <button type="button" data-filter="all" class="is-active">
+                        All
+                    </button>
+                    <button type="button" data-filter="published">
+                        Published
+                    </button>
+                    <button type="button" data-filter="scheduled">
+                        Scheduled
+                    </button>
+                    <button type="button" data-filter="draft">Drafts</button>
+                    <button type="button" data-filter="archived">
+                        Archived
+                    </button>
+                </div>
             </div>
 
             {
@@ -77,7 +118,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                         <tbody>
                             {
                                 posts.map((post) => (
-                                    <tr>
+                                    <tr
+                                        data-status={post.status}
+                                        data-search={`${post.title} ${post.category} ${post.tags.join(" ")}`.toLowerCase()}
+                                    >
                                         <td>
                                             <div class="studio-table__title">
                                                 {post.title}
@@ -95,7 +139,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                                                         : post.status ===
                                                             "scheduled"
                                                           ? "studio-badge--scheduled"
-                                                          : "studio-badge--published",
+                                                          : post.status ===
+                                                              "archived"
+                                                            ? "studio-badge--archived"
+                                                            : "studio-badge--published",
                                                 ]}
                                                 data-status={post.status}
                                                 data-pubdate={post.pubDate}
@@ -111,7 +158,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                                                     : post.status ===
                                                         "scheduled"
                                                       ? "Scheduled"
-                                                      : "Published"}
+                                                      : post.status ===
+                                                          "archived"
+                                                        ? "Archived"
+                                                        : "Published"}
                                             </span>
                                             {
                                                 post.featured && (
@@ -148,6 +198,13 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                             }
                         </tbody>
                     </table>
+                    <p
+                        class="studio-table__empty"
+                        id="article-empty"
+                        hidden
+                    >
+                        No articles match your search.
+                    </p>
                 ) : (
                     <p class="studio-lead">
                         No articles yet. Create your first article to get
@@ -167,34 +224,92 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
         draft: "Draft",
         scheduled: "Scheduled",
         published: "Published",
+        archived: "Archived",
     };
     const BADGE_CLASSES: Record<string, string> = {
         draft: "studio-badge--draft",
         scheduled: "studio-badge--scheduled",
         published: "studio-badge--published",
+        archived: "studio-badge--archived",
     };
     const now = Date.now();
     document
         .querySelectorAll("[data-status][data-pubdate]")
         .forEach((el) => {
+            const isDraft = el.getAttribute("data-status") === "draft";
+            const isArchived = el.getAttribute("data-status") === "archived";
             const pubDate = Number(
                 new Date(el.getAttribute("data-pubdate") || ""),
             );
-            const isDraft = el.getAttribute("data-status") === "draft";
             const status = isDraft
                 ? "draft"
-                : pubDate > now
-                  ? "scheduled"
-                  : "published";
+                : isArchived
+                  ? "archived"
+                  : pubDate > now
+                    ? "scheduled"
+                    : "published";
             el.classList.remove(
                 "studio-badge--draft",
                 "studio-badge--scheduled",
                 "studio-badge--published",
+                "studio-badge--archived",
             );
             el.classList.add(BADGE_CLASSES[status]);
             el.textContent = BADGE_LABELS[status];
             el.setAttribute("data-status", status);
+            // Keep the parent row's status in sync for the status filter.
+            el.closest("tr")?.setAttribute("data-status", status);
             // A flipped badge must not keep the "Scheduled for …" tooltip
             if (status !== "scheduled") el.removeAttribute("title");
         });
+</script>
+
+<script>
+    // Client-side search + status filter for the article manager.
+    const searchInput = document.getElementById(
+        "article-search",
+    ) as HTMLInputElement | null;
+    const filterButtons =
+        document.querySelectorAll<HTMLButtonElement>("[data-filter]");
+    const countEl = document.getElementById("article-count");
+    const emptyEl = document.getElementById("article-empty");
+    const rows = Array.from(document.querySelectorAll<HTMLTableRowElement>(
+        ".studio-table tbody tr",
+    ));
+    let activeFilter = "all";
+
+    function applyFilters() {
+        const query = (searchInput?.value || "").trim().toLowerCase();
+        let visible = 0;
+
+        rows.forEach((row) => {
+            const status = row.getAttribute("data-status") || "";
+            const haystack = row.getAttribute("data-search") || "";
+            const matchesFilter =
+                activeFilter === "all" || status === activeFilter;
+            const matchesQuery = !query || haystack.includes(query);
+            const show = matchesFilter && matchesQuery;
+            row.hidden = !show;
+            if (show) visible++;
+        });
+
+        if (countEl) {
+            countEl.textContent = `All articles (${visible})`;
+        }
+        if (emptyEl) {
+            emptyEl.hidden = visible > 0;
+        }
+    }
+
+    searchInput?.addEventListener("input", applyFilters);
+
+    filterButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            activeFilter = button.dataset.filter || "all";
+            filterButtons.forEach((b) =>
+                b.classList.toggle("is-active", b === button),
+            );
+            applyFilters();
+        });
+    });
 </script>
