@@ -281,6 +281,15 @@
     text-decoration: underline;
 }
 
+.studio-link--danger {
+    color: var(--color-danger);
+}
+
+.studio-link--danger:hover {
+    color: var(--color-danger);
+    text-decoration: underline;
+}
+
 /* ---- Forms ---- */
 
 .studio-form {
@@ -454,6 +463,35 @@
         var(--color-danger) 8%,
         var(--color-surface)
     );
+}
+
+/* ---- Status row (status + last-saved) ---- */
+
+.studio-status-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.studio-status-row .studio-status {
+    flex: 1;
+    min-width: 0;
+}
+
+.studio-last-saved {
+    font-size: 0.82rem;
+    color: var(--color-muted);
+    white-space: nowrap;
+    padding: 0.4rem 0.65rem;
+    border-radius: var(--radius-md);
+    background: var(--color-surface-alt);
+}
+
+/* ---- Form actions spacer (pushes trailing items right) ---- */
+
+.studio-form__actions-spacer {
+    flex: 1;
 }
 
 /* ---- Image upload / preview ---- */

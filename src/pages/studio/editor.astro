@@ -558,12 +558,15 @@ const allSlugs = posts.map((post) => post.id);
                 </div>
             </section>
 
-            <div class="studio-status" id="save-status" aria-live="polite">
-                {
-                    isEditing
-                        ? "Ready to save changes to this article."
-                        : "Fill in the details, then save a draft or publish."
-                }
+            <div class="studio-status-row">
+                <div class="studio-status" id="save-status" aria-live="polite">
+                    {
+                        isEditing
+                            ? "Ready to save changes to this article."
+                            : "Fill in the details, then save a draft or publish."
+                    }
+                </div>
+                <span class="studio-last-saved" id="last-saved" hidden></span>
             </div>
 
             <div class="studio-form__actions">
@@ -597,6 +600,16 @@ const allSlugs = posts.map((post) => post.id);
                         </a>
                     )
                 }
+                <span class="studio-form__actions-spacer"></span>
+                <button
+                    class="studio-button studio-button--danger"
+                    type="button"
+                    id="delete-article-btn"
+                    data-editing={isEditing ? "true" : "false"}
+                    style={isEditing ? undefined : "display:none"}
+                >
+                    Delete article
+                </button>
             </div>
         </form>
     </StudioShell>
@@ -611,6 +624,7 @@ const allSlugs = posts.map((post) => post.id);
         getLoginUrl,
         getFile,
         putFile,
+        deleteFile,
         slugify,
         fileToBase64,
         serializeArticle,
@@ -1260,6 +1274,7 @@ const allSlugs = posts.map((post) => post.id);
             dirty = false;
             updateWordCount();
             renderPreview();
+            observeDeleteBtn();
         } catch (err) {
             const statusCode = (err as { status?: number })?.status;
             if (apiMode && statusCode === 401) {
@@ -1381,6 +1396,72 @@ const allSlugs = posts.map((post) => post.id);
     }
 
     /* ---- Save / publish ---- */
+    /* ---- Delete article ---- */
+    const deleteBtn = document.getElementById("delete-article-btn") as HTMLButtonElement | null;
+    if (deleteBtn && isEditing && originalSlug) {
+        deleteBtn.removeAttribute("style");
+        deleteBtn.addEventListener("click", async () => {
+            const slugToDelete = originalSlug;
+            const confirmed = window.confirm(
+                `Delete "${slugToDelete}"? This permanently removes the article from GitHub and cannot be undone.`,
+            );
+            if (!confirmed) return;
+
+            const apiMode = hasApi();
+            const config = getStudioConfig();
+            if (!apiMode && !config) {
+                setStatus("GitHub is not connected. Open Studio → Settings first.", "error");
+                return;
+            }
+
+            deleteBtn.disabled = true;
+            deleteBtn.textContent = "Deleting…";
+            setStatus("Deleting article from GitHub…");
+
+            try {
+                const mdPath = `src/content/articles/${slugToDelete}.md`;
+                const removed = await deleteFile(
+                    mdPath,
+                    `Studio: delete article ${slugToDelete}`,
+                );
+                if (!removed) {
+                    setStatus(`Article "${slugToDelete}" was not found on GitHub.`, "error");
+                    deleteBtn.disabled = false;
+                    deleteBtn.textContent = "Delete article";
+                    return;
+                }
+                showToast(`"${slugToDelete}" deleted. The site rebuilds in a few minutes.`, "success");
+                setStatus(`✓ Deleted "${slugToDelete}". Redirecting…`, "success");
+                dirty = false;
+                window.setTimeout(() => {
+                    window.location.assign(`${base}/studio/articles`);
+                }, 1200);
+            } catch (err) {
+                deleteBtn.disabled = false;
+                deleteBtn.textContent = "Delete article";
+                const statusCode = (err as { status?: number })?.status;
+                if (apiMode && statusCode === 401) {
+                    setStatus("Your GitHub session expired. Redirecting to sign in…", "error");
+                    window.setTimeout(() => {
+                        window.location.assign(getLoginUrl(window.location.href));
+                    }, 1200);
+                    return;
+                }
+                setStatus(
+                    `Delete failed: ${err instanceof Error ? err.message : String(err)}`,
+                    "error",
+                );
+            }
+        });
+    }
+
+    /* ---- Show delete button when editing (client-side load sets isEditing) ---- */
+    const observeDeleteBtn = () => {
+        if (deleteBtn && isEditing && originalSlug) {
+            deleteBtn.removeAttribute("style");
+        }
+    };
+
     const saveArticle = async (action: "save" | "publish") => {
         const apiMode = hasApi();
         const config = getStudioConfig();
@@ -1555,6 +1636,13 @@ const allSlugs = posts.map((post) => post.id);
             saving = false;
             if (saveBtn) saveBtn.disabled = false;
             if (publishBtn) publishBtn.disabled = false;
+            // Show a "last saved" timestamp
+            const now = new Date();
+            const savedLabel = document.getElementById("last-saved");
+            if (savedLabel) {
+                savedLabel.textContent = `Last saved ${now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+                savedLabel.removeAttribute("hidden");
+            }
         } catch (err) {
             saving = false;
             if (saveBtn) saveBtn.disabled = false;
@@ -1598,6 +1686,15 @@ const allSlugs = posts.map((post) => post.id);
         event.preventDefault();
         const submitter = event.submitter as HTMLButtonElement | null;
         const action = submitter?.value === "publish" ? "publish" : "save";
+
+        if (action === "publish") {
+            const titleVal = (titleInput?.value || "").trim() || "Untitled";
+            const confirmed = window.confirm(
+                `Publish "${titleVal}"?\n\nThis will commit the article to GitHub and it will be live on the site once the build completes.`,
+            );
+            if (!confirmed) return;
+        }
+
         void saveArticle(action);
     });
 

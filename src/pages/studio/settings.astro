@@ -381,86 +381,86 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
             throw new Error("Studio settings failed to initialize.");
         }
 
-    const tokenInput = form.elements.namedItem("token") as HTMLInputElement;
-    const ownerInput = form.elements.namedItem("owner") as HTMLInputElement;
-    const repoInput = form.elements.namedItem("repo") as HTMLInputElement;
-    const branchInput = form.elements.namedItem("branch") as HTMLInputElement;
-    const analyticsInput = form.elements.namedItem(
-        "analyticsDomain",
-    ) as HTMLInputElement;
+        const tokenInput = form.elements.namedItem("token") as HTMLInputElement;
+        const ownerInput = form.elements.namedItem("owner") as HTMLInputElement;
+        const repoInput = form.elements.namedItem("repo") as HTMLInputElement;
+        const branchInput = form.elements.namedItem("branch") as HTMLInputElement;
+        const analyticsInput = form.elements.namedItem(
+            "analyticsDomain",
+        ) as HTMLInputElement;
 
-    const setStatus = (
-        message: string,
-        kind: "info" | "success" | "error",
-    ) => {
-        status.className = "studio-status";
-        if (kind === "success") status.classList.add("studio-status--success");
-        if (kind === "error") status.classList.add("studio-status--error");
-        status.textContent = message;
-    };
-
-    function readConfig() {
-        return {
-            token: tokenInput.value.trim(),
-            owner: ownerInput.value.trim() || DEFAULT_OWNER,
-            repo: repoInput.value.trim() || DEFAULT_REPO,
-            branch: branchInput.value.trim() || DEFAULT_BRANCH,
-            analyticsDomain: analyticsInput.value.trim() || undefined,
+        const setStatus = (
+            message: string,
+            kind: "info" | "success" | "error",
+        ) => {
+            status.className = "studio-status";
+            if (kind === "success") status.classList.add("studio-status--success");
+            if (kind === "error") status.classList.add("studio-status--error");
+            status.textContent = message;
         };
-    }
 
-    /* Pre-fill from stored config */
-    const stored = getStudioConfig();
-    if (stored) {
-        tokenInput.value = stored.token ?? "";
-        ownerInput.value = stored.owner;
-        repoInput.value = stored.repo;
-        branchInput.value = stored.branch;
-        analyticsInput.value = stored.analyticsDomain ?? "";
-        setStatus(
-            "Connected — token saved for this device.",
-            "success",
-        );
-    } else {
-        ownerInput.value = DEFAULT_OWNER;
-        repoInput.value = DEFAULT_REPO;
-        branchInput.value = DEFAULT_BRANCH;
-        setStatus(
-            "Not connected yet. Add a personal access token and save.",
-            "info",
-        );
-    }
+        function readConfig() {
+            return {
+                token: tokenInput.value.trim(),
+                owner: ownerInput.value.trim() || DEFAULT_OWNER,
+                repo: repoInput.value.trim() || DEFAULT_REPO,
+                branch: branchInput.value.trim() || DEFAULT_BRANCH,
+                analyticsDomain: analyticsInput.value.trim() || undefined,
+            };
+        }
 
-    form.addEventListener("submit", (event) => {
-        event.preventDefault();
-        const config = readConfig();
-        if (!config.token && !config.analyticsDomain) {
+        /* Pre-fill from stored config */
+        const stored = getStudioConfig();
+        if (stored) {
+            tokenInput.value = stored.token ?? "";
+            ownerInput.value = stored.owner;
+            repoInput.value = stored.repo;
+            branchInput.value = stored.branch;
+            analyticsInput.value = stored.analyticsDomain ?? "";
             setStatus(
-                "Add a personal access token (or at least an analytics domain) before saving.",
-                "error",
+                "Connected — token saved for this device.",
+                "success",
             );
-            return;
+        } else {
+            ownerInput.value = DEFAULT_OWNER;
+            repoInput.value = DEFAULT_REPO;
+            branchInput.value = DEFAULT_BRANCH;
+            setStatus(
+                "Not connected yet. Add a personal access token and save.",
+                "info",
+            );
         }
-        saveStudioConfig(config);
-        setStatus(
-            config.token
-                ? "Saved for this device. The editor can now commit articles to GitHub."
-                : "Analytics domain saved. Add a token when you're ready to publish from the editor.",
-            "success",
-        );
-    });
 
-    testBtn?.addEventListener("click", async () => {
-        const config = readConfig();
-        if (!config.token) {
-            setStatus("Enter a token before testing.", "error");
-            return;
-        }
-        testBtn.disabled = true;
-        setStatus("Testing connection…", "info");
-        const result = await testGitHubConnection(config);
-        setStatus(result.message, result.ok ? "success" : "error");
-        testBtn.disabled = false;
-    });
+        form.addEventListener("submit", (event) => {
+            event.preventDefault();
+            const config = readConfig();
+            if (!config.token && !config.analyticsDomain) {
+                setStatus(
+                    "Add a personal access token (or at least an analytics domain) before saving.",
+                    "error",
+                );
+                return;
+            }
+            saveStudioConfig(config);
+            setStatus(
+                config.token
+                    ? "Saved for this device. The editor can now commit articles to GitHub."
+                    : "Analytics domain saved. Add a token when you're ready to publish from the editor.",
+                "success",
+            );
+        });
+
+        testBtn?.addEventListener("click", async () => {
+            const config = readConfig();
+            if (!config.token) {
+                setStatus("Enter a token before testing.", "error");
+                return;
+            }
+            testBtn.disabled = true;
+            setStatus("Testing connection…", "info");
+            const result = await testGitHubConnection(config);
+            setStatus(result.message, result.ok ? "success" : "error");
+            testBtn.disabled = false;
+        });
     }
 </script>

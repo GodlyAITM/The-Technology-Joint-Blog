@@ -191,6 +191,14 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                                                 >
                                                     Duplicate
                                                 </a>
+                                                <button
+                                                    class="studio-link studio-link--danger"
+                                                    type="button"
+                                                    data-delete-article={post.slug}
+                                                    data-delete-title={post.title}
+                                                >
+                                                    Delete
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -311,5 +319,80 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
             );
             applyFilters();
         });
+    });
+</script>
+
+<script>
+    import {
+        hasApi,
+        hasStudioConfig,
+        deleteFile,
+    } from "../../lib/studio/github";
+    import { showToast } from "../../lib/studio/toast";
+
+    const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+    // Delegate delete clicks from the articles table.
+    document.addEventListener("click", async (event) => {
+        const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+            "[data-delete-article]",
+        );
+        if (!button) return;
+
+        const slug = button.dataset.deleteArticle || "";
+        const title = button.dataset.deleteTitle || slug;
+        if (!slug) return;
+
+        const confirmed = window.confirm(
+            `Delete "${title}"? This permanently removes the article from GitHub and cannot be undone.`,
+        );
+        if (!confirmed) return;
+
+        const apiMode = hasApi();
+        if (!apiMode && !hasStudioConfig()) {
+            showToast("GitHub is not connected — open Studio → Settings first.", "error");
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = "…";
+
+        try {
+            const mdPath = `src/content/articles/${slug}.md`;
+            const removed = await deleteFile(
+                mdPath,
+                `Studio: delete article ${slug}`,
+            );
+            if (!removed) {
+                showToast(`"${slug}" was not found on GitHub.`, "error");
+                button.disabled = false;
+                button.textContent = "Delete";
+                return;
+            }
+            showToast(`"${title}" deleted. The site rebuilds in a few minutes.`, "success");
+            // Remove the row from the table with a fade
+            const row = button.closest("tr");
+            if (row) {
+                row.style.opacity = "0";
+                row.style.transition = "opacity 0.25s";
+                window.setTimeout(() => row.remove(), 300);
+            }
+            // Update the count
+            const countEl = document.getElementById("article-count");
+            if (countEl) {
+                const visibleRows = document.querySelectorAll(
+                    ".studio-table tbody tr:not([hidden])",
+                );
+                const remaining = visibleRows.length - 1; // minus the one being removed
+                countEl.textContent = `All articles (${Math.max(0, remaining)})`;
+            }
+        } catch (err) {
+            button.disabled = false;
+            button.textContent = "Delete";
+            showToast(
+                `Delete failed: ${err instanceof Error ? err.message : String(err)}`,
+                "error",
+            );
+        }
     });
 </script>
