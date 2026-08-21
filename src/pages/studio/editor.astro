@@ -410,6 +410,75 @@ const allSlugs = posts.map((post) => post.id);
                 </div>
             </section>
 
+            <!-- ==================== 3b. SEO Analysis (live) ==================== -->
+            <section class="studio-form-section" id="seo-analysis">
+                <div class="studio-form-section__header">
+                    <h3>SEO Analysis</h3>
+                    <p>Live checklist — items turn green as you optimise.</p>
+                </div>
+
+                <!-- Meta length indicators -->
+                <div class="seo-checklist" id="seo-checklist">
+                    <div class="seo-check" data-seo="title-length">
+                        <span class="seo-check__icon" aria-hidden="true"></span>
+                        <div class="seo-check__body">
+                            <strong>Title length</strong>
+                            <p><span id="seo-title-count">0</span> / 60 characters — aim for 50–60 for full display in search results.</p>
+                        </div>
+                    </div>
+                    <div class="seo-check" data-seo="desc-length">
+                        <span class="seo-check__icon" aria-hidden="true"></span>
+                        <div class="seo-check__body">
+                            <strong>Description length</strong>
+                            <p><span id="seo-desc-count">0</span> / 160 characters — aim for 150–160 for a complete snippet.</p>
+                        </div>
+                    </div>
+                    <div class="seo-check" data-seo="alt-text">
+                        <span class="seo-check__icon" aria-hidden="true"></span>
+                        <div class="seo-check__body">
+                            <strong>Hero image alt text</strong>
+                            <p id="seo-alt-text-hint">Add descriptive alt text for accessibility and image search.</p>
+                        </div>
+                    </div>
+                    <div class="seo-check" data-seo="body-length">
+                        <span class="seo-check__icon" aria-hidden="true"></span>
+                        <div class="seo-check__body">
+                            <strong>Body word count</strong>
+                            <p><span id="seo-body-words">0</span> words — aim for 300+ for better ranking.</p>
+                        </div>
+                    </div>
+                    <div class="seo-check" data-seo="slug">
+                        <span class="seo-check__icon" aria-hidden="true"></span>
+                        <div class="seo-check__body">
+                            <strong>URL slug</strong>
+                            <p id="seo-slug-hint">Use a short, descriptive slug with your main keyword.</p>
+                        </div>
+                    </div>
+                    <div class="seo-check" data-seo="category">
+                        <span class="seo-check__icon" aria-hidden="true"></span>
+                        <div class="seo-check__body">
+                            <strong>Category set</strong>
+                            <p id="seo-category-hint">Assign a category so articles are grouped correctly.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Open Graph preview -->
+                <div class="studio-panel__header" style="margin-top: 1rem">
+                    <h3>Social preview</h3>
+                </div>
+                <div class="seo-og-preview" id="seo-og-preview">
+                    <div class="seo-og-preview__image" id="seo-og-image">
+                        <span id="seo-og-image-hint">No hero image set</span>
+                    </div>
+                    <div class="seo-og-preview__body">
+                        <span class="seo-og-preview__site" id="seo-og-site">The Technology Joint</span>
+                        <strong class="seo-og-preview__title" id="seo-og-title">Article title</strong>
+                        <p class="seo-og-preview__desc" id="seo-og-desc">Article description will appear here.</p>
+                    </div>
+                </div>
+            </section>
+
             <!-- ==================== 4. Content ==================== -->
             <section class="studio-form-section">
                 <div class="studio-form-section__header">
@@ -1696,6 +1765,143 @@ const allSlugs = posts.map((post) => post.id);
         }
 
         void saveArticle(action);
+    });
+
+    /* ---- Live SEO analysis panel ---- */
+    const seoTitleCount = document.getElementById("seo-title-count");
+    const seoDescCount = document.getElementById("seo-desc-count");
+    const seoBodyWords = document.getElementById("seo-body-words");
+    const seoOgTitle = document.getElementById("seo-og-title");
+    const seoOgDesc = document.getElementById("seo-og-desc");
+    const seoOgImage = document.getElementById("seo-og-image");
+    const seoOgImageHint = document.getElementById("seo-og-image-hint");
+    const seoSlugHint = document.getElementById("seo-slug-hint");
+    const seoCategoryHint = document.getElementById("seo-category-hint");
+    const seoAltHint = document.getElementById("seo-alt-text-hint");
+
+    function setSeoCheck(key: string, status: "pass" | "warn" | "fail" | "") {
+        const el = document.querySelector<HTMLElement>(`[data-seo="${key}"]`);
+        if (!el) return;
+        el.classList.remove("seo-check--pass", "seo-check--warn", "seo-check--fail");
+        if (status) el.classList.add(`seo-check--${status}`);
+    }
+
+    function runSeoAnalysis() {
+        const title = (titleInput?.value || "").trim();
+        const seoTitle = (
+            document.getElementById("field-seotitle") as HTMLInputElement | null
+        )?.value?.trim();
+        const effectiveTitle = seoTitle || title;
+        const description = (
+            document.getElementById("field-description") as HTMLTextAreaElement | null
+        )?.value?.trim();
+        const seoDesc = (
+            document.getElementById("field-seodesc") as HTMLTextAreaElement | null
+        )?.value?.trim();
+        const effectiveDesc = seoDesc || description;
+        const body = bodyInput?.value || "";
+        const bodyWords = body.trim() ? body.trim().split(/\s+/).length : 0;
+        const altText = (
+            document.getElementById("field-alt") as HTMLInputElement | null
+        )?.value?.trim();
+        const heroImage = pendingImage
+            ? "pending"
+            : (
+                document.querySelector<HTMLInputElement>("input[name=heroImage]")
+            )?.value?.trim();
+        const slug = isEditing
+            ? originalSlug
+            : (slugInput?.value || "").trim();
+        const category = (
+            document.getElementById("field-category") as HTMLInputElement | null
+        )?.value?.trim();
+
+        // 1. Title length
+        const titleLen = effectiveTitle.length;
+        if (seoTitleCount) seoTitleCount.textContent = String(titleLen);
+        if (titleLen === 0) setSeoCheck("title-length", "fail");
+        else if (titleLen > 60) setSeoCheck("title-length", "warn");
+        else if (titleLen >= 50) setSeoCheck("title-length", "pass");
+        else setSeoCheck("title-length", "warn");
+
+        // 2. Description length
+        const descLen = effectiveDesc.length;
+        if (seoDescCount) seoDescCount.textContent = String(descLen);
+        if (descLen === 0) setSeoCheck("desc-length", "fail");
+        else if (descLen > 160) setSeoCheck("desc-length", "warn");
+        else if (descLen >= 150) setSeoCheck("desc-length", "pass");
+        else setSeoCheck("desc-length", "warn");
+
+        // 3. Alt text
+        if (heroImage === "pending") {
+            if (altText) {
+                setSeoCheck("alt-text", "pass");
+                if (seoAltHint) seoAltHint.textContent = "Alt text is set — good for accessibility and SEO.";
+            } else {
+                setSeoCheck("alt-text", "warn");
+                if (seoAltHint) seoAltHint.textContent = "New hero image selected — add alt text before saving.";
+            }
+        } else if (heroImage) {
+            if (altText) {
+                setSeoCheck("alt-text", "pass");
+                if (seoAltHint) seoAltHint.textContent = "Alt text is set — good for accessibility and SEO.";
+            } else {
+                setSeoCheck("alt-text", "warn");
+                if (seoAltHint) seoAltHint.textContent = "Hero image is set but alt text is missing — add a description.";
+            }
+        } else {
+            setSeoCheck("alt-text", "pass");
+            if (seoAltHint) seoAltHint.textContent = "No hero image — alt text check skipped.";
+        }
+
+        // 4. Body word count
+        if (seoBodyWords) seoBodyWords.textContent = String(bodyWords);
+        if (bodyWords === 0) setSeoCheck("body-length", "fail");
+        else if (bodyWords < 300) setSeoCheck("body-length", "warn");
+        else setSeoCheck("body-length", "pass");
+
+        // 5. Slug
+        if (slug) {
+            setSeoCheck("slug", "pass");
+            if (seoSlugHint) seoSlugHint.textContent = `URL: /articles/${slug}/`;
+        } else {
+            setSeoCheck("slug", "warn");
+            if (seoSlugHint) seoSlugHint.textContent = "Set a slug — it defines the article URL.";
+        }
+
+        // 6. Category
+        if (category) {
+            setSeoCheck("category", "pass");
+            if (seoCategoryHint) seoCategoryHint.textContent = `Category: ${category}`;
+        } else {
+            setSeoCheck("category", "warn");
+            if (seoCategoryHint) seoCategoryHint.textContent = "Assign a category so articles are grouped correctly.";
+        }
+
+        // Open Graph preview
+        if (seoOgTitle) seoOgTitle.textContent = effectiveTitle || "Article title";
+        if (seoOgDesc) seoOgDesc.textContent = effectiveDesc || "Article description will appear here.";
+        if (heroImage === "pending") {
+            // Newly uploaded image — use the file input preview
+            const previewImg = document.getElementById("hero-image-preview-img") as HTMLImageElement | null;
+            if (seoOgImage && previewImg?.src) {
+                seoOgImage.innerHTML = `<img src="${previewImg.src}" alt="" />`;
+            } else if (seoOgImage) {
+                seoOgImage.innerHTML = `<span>New hero image selected</span>`;
+            }
+        } else if (heroImage) {
+            if (seoOgImage) {
+                seoOgImage.innerHTML = `<img src="${base}${heroImage}" alt="" />`;
+            }
+        } else {
+            if (seoOgImage) seoOgImage.innerHTML = `<span>No hero image set</span>`;
+        }
+    }
+
+    // Initial run + live updates on input
+    runSeoAnalysis();
+    form?.addEventListener("input", () => {
+        runSeoAnalysis();
     });
 
     /* ---- Keyboard shortcuts ---- */

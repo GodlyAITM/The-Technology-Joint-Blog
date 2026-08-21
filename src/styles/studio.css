@@ -1589,6 +1589,178 @@
     color: var(--color-muted);
 }
 
+/* ---- SEO analysis panel ---- */
+
+.seo-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.seo-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    transition:
+        background var(--transition),
+        border-color var(--transition);
+}
+
+.seo-check--pass {
+    border-color: color-mix(in srgb, var(--color-success) 40%, var(--color-border));
+    background: color-mix(in srgb, var(--color-success) 6%, var(--color-surface));
+}
+
+.seo-check--warn {
+    border-color: color-mix(in srgb, var(--color-warning) 40%, var(--color-border));
+    background: color-mix(in srgb, var(--color-warning) 6%, var(--color-surface));
+}
+
+.seo-check--fail {
+    border-color: color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
+    background: color-mix(in srgb, var(--color-danger) 6%, var(--color-surface));
+}
+
+.seo-check__icon {
+    flex-shrink: 0;
+    width: 1.2rem;
+    height: 1.2rem;
+    margin-top: 0.15rem;
+    border-radius: 999px;
+    border: 2px solid var(--color-border);
+    display: grid;
+    place-items: center;
+    font-size: 0.7rem;
+    transition:
+        background var(--transition),
+        border-color var(--transition),
+        color var(--transition);
+}
+
+.seo-check--pass .seo-check__icon {
+    background: var(--color-success);
+    border-color: var(--color-success);
+    color: white;
+}
+
+.seo-check--pass .seo-check__icon::after {
+    content: "✓";
+}
+
+.seo-check--warn .seo-check__icon {
+    background: var(--color-warning);
+    border-color: var(--color-warning);
+    color: white;
+}
+
+.seo-check--warn .seo-check__icon::after {
+    content: "!";
+}
+
+.seo-check--fail .seo-check__icon {
+    background: var(--color-danger);
+    border-color: var(--color-danger);
+    color: white;
+}
+
+.seo-check--fail .seo-check__icon::after {
+    content: "✕";
+}
+
+.seo-check__body strong {
+    display: block;
+    font-size: 0.92rem;
+}
+
+.seo-check__body p {
+    margin: 0.15rem 0 0;
+    font-size: 0.82rem;
+    color: var(--color-muted);
+    line-height: 1.45;
+}
+
+.seo-check--pass .seo-check__body p {
+    color: var(--color-success);
+}
+
+.seo-check--warn .seo-check__body p {
+    color: var(--color-warning);
+}
+
+.seo-check--fail .seo-check__body p {
+    color: var(--color-danger);
+}
+
+/* ---- Open Graph preview card ---- */
+
+.seo-og-preview {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--color-surface);
+    max-width: 520px;
+}
+
+.seo-og-preview__image {
+    aspect-ratio: 1200 / 630;
+    background: var(--color-surface-alt);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.seo-og-preview__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.seo-og-preview__image span {
+    color: var(--color-muted);
+    font-size: 0.85rem;
+}
+
+.seo-og-preview__body {
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.seo-og-preview__site {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-muted);
+}
+
+.seo-og-preview__title {
+    font-size: 1rem;
+    line-height: 1.3;
+    color: var(--color-text);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.seo-og-preview__desc {
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    line-height: 1.45;
+    margin: 0.15rem 0 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
 /* ---- Phase 3 responsive ---- */
 
 @media (max-width: 900px) {
@@ -1607,6 +1779,10 @@
         bottom: 0.85rem;
         right: 0.85rem;
         left: 0.85rem;
+        max-width: none;
+    }
+
+    .seo-og-preview {
         max-width: none;
     }
 }
@@ -1632,5 +1808,18 @@
 
     .media-dropzone {
         padding: 1.5rem 1rem;
+    }
+
+    .seo-check {
+        padding: 0.5rem 0.6rem;
+        gap: 0.5rem;
+    }
+
+    .seo-check__body p {
+        font-size: 0.78rem;
+    }
+
+    .seo-og-preview__body {
+        padding: 0.7rem 0.85rem;
     }
 }
