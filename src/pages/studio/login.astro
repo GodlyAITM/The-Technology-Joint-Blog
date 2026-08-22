@@ -19,7 +19,7 @@ const authMode = getAuthMode();
             {
                 authMode === "oauth" ? (
                     <div id="login-oauth" class="login-oauth">
-                        <a class="github-button" href="/studio/login">
+                        <a class="github-button" href="#" id="github-login-btn">
                             <svg
                                 viewBox="0 0 24 24"
                                 width="20"
@@ -38,7 +38,7 @@ const authMode = getAuthMode();
                             secure cookie.
                         </p>
                         <div id="login-status" class="login-status" aria-live="polite">
-                            Starting sign in…
+                            Click above to sign in with GitHub.
                         </div>
                     </div>
                 ) : authMode === "team" ? (
@@ -159,7 +159,7 @@ const authMode = getAuthMode();
                             </button>
                         </form>
                         <div id="login-status" class="login-status" aria-live="polite">
-                            Signing you in…
+                            Click above to enter the Studio workspace.
                         </div>
                     </div>
                 )
@@ -215,6 +215,19 @@ const authMode = getAuthMode();
             loginUrl.searchParams.set("next", next);
             link.href = loginUrl.toString();
             status.textContent = "Ready — click to sign in with GitHub.";
+            // Prevent double-clicks: after first click, grey out the button
+            // so the user doesn't fire multiple OAuth redirects.
+            let clicked = false;
+            link.addEventListener("click", () => {
+                if (clicked) {
+                    status.textContent = "Redirecting to GitHub… please wait.";
+                    return;
+                }
+                clicked = true;
+                link.style.opacity = "0.6";
+                link.style.pointerEvents = "none";
+                status.textContent = "Redirecting to GitHub…";
+            });
         }
     } else if (authMode === "team") {
         const tabs = document.querySelectorAll<HTMLButtonElement>("[data-login-tab]");
@@ -235,21 +248,35 @@ const authMode = getAuthMode();
             });
         });
 
+        function setLoading(form: HTMLFormElement, loading: boolean) {
+            const btn = form.querySelector<HTMLButtonElement>(".login-submit");
+            if (btn) {
+                btn.disabled = loading;
+                btn.textContent = loading ? "Please wait…" : form.dataset.loginTab === "register" ? "Create account" : "Sign in to Studio";
+            }
+        }
+
         const signin = document.getElementById(
             "team-signin-form",
         ) as HTMLFormElement | null;
         signin?.addEventListener("submit", async (event) => {
             event.preventDefault();
-            const username = String(
-                new FormData(signin).get("username") || "",
-            ).trim();
-            const password = String(new FormData(signin).get("password") || "");
+            const data = new FormData(signin);
+            const username = String(data.get("username") || "").trim();
+            const password = String(data.get("password") || "");
+            if (!username || !password) {
+                setStatus("Please enter both username and password.", "error");
+                return;
+            }
+            setLoading(signin, true);
             setStatus("Signing in…");
             const result = await teamLogin(username, password);
             if (!result.ok) {
+                setLoading(signin, false);
                 setStatus(result.error || "Sign in failed.", "error");
                 return;
             }
+            setStatus("Signed in — redirecting…");
             window.location.assign(next);
         });
 
@@ -262,9 +289,15 @@ const authMode = getAuthMode();
             const username = String(data.get("username") || "").trim();
             const password = String(data.get("password") || "");
             const inviteCode = String(data.get("inviteCode") || "").trim();
+            if (!username || !password || !inviteCode) {
+                setStatus("Please fill in all fields.", "error");
+                return;
+            }
+            setLoading(register, true);
             setStatus("Creating account…");
             const result = await teamRegister(username, password, inviteCode);
             if (!result.ok) {
+                setLoading(register, false);
                 setStatus(result.error || "Registration failed.", "error");
                 return;
             }
@@ -278,6 +311,12 @@ const authMode = getAuthMode();
         if (form && status) {
             form.addEventListener("submit", (event) => {
                 event.preventDefault();
+                const btn = form.querySelector<HTMLButtonElement>(".login-submit");
+                if (btn) {
+                    btn.disabled = true;
+                    btn.textContent = "Entering Studio…";
+                }
+                setStatus("Redirecting to the Studio…");
                 // sessionStorage only — cleared when the browser/tab session
                 // ends, so every fresh visit asks to sign in again.
                 window.sessionStorage.setItem("studio-auth", "authenticated");
@@ -475,9 +514,15 @@ const authMode = getAuthMode();
             transform var(--transition);
     }
 
-    .login-submit:hover {
+    .login-submit:hover:not(:disabled) {
         background: var(--color-primary-dark);
         transform: translateY(-1px);
+    }
+
+    .login-submit:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
     }
 
     @media (max-width: 480px) {

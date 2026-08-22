@@ -212,19 +212,59 @@ const websiteSchema = {
                     return;
                 }
 
-                // OAuth mode: ask the worker for the session (HttpOnly cookie
-                // is sent automatically via credentials: include).
+                // OAuth/team mode: ask the worker for the session (HttpOnly
+                // cookie is sent automatically via credentials: include).
+                // Guard against redirect loops: if we recently failed to
+                // reach the API (within 10 s), skip the check and let the
+                // login page render so the user can retry manually.
+                var FAIL_KEY = "studio-api-fail-ts";
+                var FAIL_COOLDOWN = 10000;
+                var lastFail = 0;
+                try { lastFail = Number(sessionStorage.getItem(FAIL_KEY) || 0); } catch {}
+                var recentlyFailed = lastFail && (Date.now() - lastFail < FAIL_COOLDOWN);
+
+                if (recentlyFailed && isLoginRoute) {
+                    // API just failed — don't bounce the user; let them
+                    // see the login page and try again.
+                    return;
+                }
+
+                // Show a subtle loading state while the async check runs
+                // (prevents the flash of wrong content).
+                if (!isLoginRoute) {
+                    body.classList.add("studio-loading");
+                }
+
+                var controller = typeof AbortController !== "undefined"
+                    ? new AbortController()
+                    : null;
+                var timeout = setTimeout(function () {
+                    if (controller) controller.abort();
+                }, 8000);
+
                 fetch(apiBase + "/api/auth/session", {
                     credentials: "include",
+                    signal: controller ? controller.signal : undefined,
                 })
                     .then(function (res) {
+                        clearTimeout(timeout);
                         return res.json();
                     })
                     .then(function (data) {
+                        body.classList.remove("studio-loading");
+                        try { sessionStorage.removeItem(FAIL_KEY); } catch {}
                         handleAuth(Boolean(data && data.authenticated));
                     })
                     .catch(function () {
-                        handleAuth(false);
+                        clearTimeout(timeout);
+                        body.classList.remove("studio-loading");
+                        try { sessionStorage.setItem(FAIL_KEY, String(Date.now())); } catch {}
+                        // Don't redirect to login if we're already there —
+                        // just let the login page render so the user can
+                        // try the OAuth / team form directly.
+                        if (!isLoginRoute) {
+                            handleAuth(false);
+                        }
                     });
             })();
         </script>

@@ -1761,6 +1761,22 @@
     overflow: hidden;
 }
 
+/* ---- Auth loading overlay (BaseLayout guard) ---- */
+
+body.studio-loading::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: color-mix(in srgb, var(--color-background) 85%, transparent);
+    animation: studio-loading-fade 0.3s ease;
+}
+
+@keyframes studio-loading-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 /* ---- Phase 3 responsive ---- */
 
 @media (max-width: 900px) {
