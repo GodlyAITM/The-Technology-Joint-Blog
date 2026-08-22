@@ -185,7 +185,7 @@ const websiteSchema = {
 
                 var path = window.location.pathname;
                 var isStudioRoute = /\/studio(\/|$)/.test(path);
-                var isLoginRoute = path === base + "/studio/login";
+                var isLoginRoute = /\/studio\/login\/?$/.test(path);
 
                 if (!isStudioRoute) return;
 
