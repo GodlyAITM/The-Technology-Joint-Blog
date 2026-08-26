@@ -422,14 +422,14 @@
 .studio-toggle-pw,
 .login-toggle-pw {
     position: absolute;
-    right: 0.5rem;
+    right: 0.35rem;
     top: 50%;
     transform: translateY(-50%);
     border: 0;
     background: transparent;
     color: var(--color-muted);
     cursor: pointer;
-    padding: 0.35rem;
+    padding: 0.4rem;
     border-radius: var(--radius-sm);
     display: grid;
     place-items: center;
@@ -440,7 +440,7 @@
 .studio-toggle-pw:hover,
 .login-toggle-pw:hover {
     color: var(--color-text);
-    background: var(--color-surface-alt);
+    background: color-mix(in srgb, var(--color-primary-soft) 50%, transparent);
 }
 
 .studio-toggle-pw:focus-visible,

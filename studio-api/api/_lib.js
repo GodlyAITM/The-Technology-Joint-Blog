@@ -115,7 +115,15 @@ export async function getUser(username) {
     const raw = await r.get(USER_KEY(username));
     if (!raw) return null;
     try {
-        return JSON.parse(raw);
+        // Upstash REST API may return the value as a string or as a
+        // pre-parsed object depending on the client version.
+        if (typeof raw === "string") {
+            return JSON.parse(raw);
+        }
+        if (typeof raw === "object") {
+            return raw;
+        }
+        return null;
     } catch {
         return null;
     }
@@ -136,7 +144,14 @@ export async function listUsers() {
             const raw = await r.get(key);
             if (raw) {
                 try {
-                    const record = JSON.parse(raw);
+                    let record;
+                    if (typeof raw === "string") {
+                        record = JSON.parse(raw);
+                    } else if (typeof raw === "object") {
+                        record = raw;
+                    } else {
+                        continue;
+                    }
                     users.push({
                         username: record.username,
                         role: record.role || "member",

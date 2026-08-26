@@ -60,8 +60,19 @@ export default async function handler(req, res) {
             const r = redis();
             const raw = await r.get(USER_KEY(username));
             if (raw) {
-                const record = JSON.parse(raw);
-                valid = verifyPassword(password, record.salt, record.hash);
+                // Upstash REST API may return the value as a string or as a
+                // pre-parsed object depending on the client version.
+                let record;
+                if (typeof raw === "string") {
+                    record = JSON.parse(raw);
+                } else if (typeof raw === "object") {
+                    record = raw;
+                } else {
+                    record = null;
+                }
+                if (record && record.salt && record.hash) {
+                    valid = verifyPassword(password, record.salt, record.hash);
+                }
             }
         } catch (err) {
             if (err instanceof Error && /Missing environment variable|not configured/.test(err.message)) {
