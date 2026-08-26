@@ -3,12 +3,13 @@ import "../../styles/studio.css";
 
 const { active = "dashboard" } = Astro.props;
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
-const navItems = [
+const navItems: { key: string; label: string; href: string; ownerOnly?: boolean }[] = [
     { key: "dashboard", label: "Dashboard", href: `${base}/studio` },
     { key: "articles", label: "Articles", href: `${base}/studio/articles` },
     { key: "editor", label: "New article", href: `${base}/studio/editor` },
     { key: "media", label: "Media", href: `${base}/studio/media` },
     { key: "settings", label: "Settings", href: `${base}/studio/settings` },
+    { key: "users", label: "Users", href: `${base}/studio/users`, ownerOnly: true },
 ];
 ---
 
@@ -28,6 +29,8 @@ const navItems = [
                     <a
                         class:list={[item.key === active ? "active" : ""]}
                         href={item.href}
+                        {...(item.ownerOnly ? { "data-owner-only": "" } : {})}
+                        style={item.ownerOnly ? "display:none" : undefined}
                     >
                         {item.label}
                     </a>
@@ -47,7 +50,7 @@ const navItems = [
         </div>
     </aside>
 
-    <main class="studio-main">
+    <main class="studio-main" id="main-content">
         <slot />
     </main>
 </div>
@@ -94,6 +97,15 @@ const navItems = [
                     const note = roleCard.querySelector("p");
                     if (note) {
                         note.textContent = `Signed in to the Studio. Edits commit to the live repository.`;
+                    }
+                    // Show owner-only nav items
+                    if (data.user.role === "owner") {
+                        document.querySelectorAll("[data-owner-only]").forEach((el) => {
+                            (el as HTMLElement).style.display = "";
+                        });
+                        if (label) {
+                            label.textContent = login ? `@${login} (Owner)` : "Editor";
+                        }
                     }
                 }
             })

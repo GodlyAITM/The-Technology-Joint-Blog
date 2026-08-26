@@ -73,19 +73,13 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
                     hasRemote && authMode === "team" && (
                         <div class="studio-panel">
                             <div class="studio-panel__header">
-                                <h3>New editors</h3>
+                                <h3>User management</h3>
                             </div>
                             <p class="studio-lead">
-                                Share the registration link with your team:
-                                anyone with the invite code can create an
-                                account and instantly publish through the
-                                shared token. Rotate the invite code in the
-                                Vercel project settings whenever you want to
-                                close the door.
-                            </p>
-                            <p class="studio-lead">
-                                Registration link:{" "}
-                                <code>{`${base}/studio/login`}</code>
+                                New accounts are created by the site owner
+                                through the <a href={`${base}/studio/users`}>Users</a>
+                                panel. Only the owner can add or remove
+                                Studio accounts.
                             </p>
                         </div>
                     )

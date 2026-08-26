@@ -43,27 +43,6 @@ const authMode = getAuthMode();
                     </div>
                 ) : authMode === "team" ? (
                     <div id="login-team" class="login-oauth">
-                        <div class="login-tabs" role="tablist" aria-label="Studio access">
-                            <button
-                                class="login-tab is-active"
-                                type="button"
-                                role="tab"
-                                aria-selected="true"
-                                data-login-tab="signin"
-                            >
-                                Sign in
-                            </button>
-                            <button
-                                class="login-tab"
-                                type="button"
-                                role="tab"
-                                aria-selected="false"
-                                data-login-tab="register"
-                            >
-                                Create account
-                            </button>
-                        </div>
-
                         <form id="team-signin-form" class="login-form" data-team-form="signin">
                             <div class="login-field">
                                 <label for="team-username">Username</label>
@@ -94,54 +73,10 @@ const authMode = getAuthMode();
                             </button>
                         </form>
 
-                        <form id="team-register-form" class="login-form" hidden data-team-form="register">
-                            <div class="login-field">
-                                <label for="team-new-username">Username</label>
-                                <input
-                                    id="team-new-username"
-                                    name="username"
-                                    type="text"
-                                    autocomplete="username"
-                                    placeholder="3–32 chars: letters, numbers, . _ -"
-                                    autocapitalize="none"
-                                    spellcheck="false"
-                                    minlength="3"
-                                    maxlength="32"
-                                    required
-                                />
-                            </div>
-                            <div class="login-field">
-                                <label for="team-new-password">Password</label>
-                                <input
-                                    id="team-new-password"
-                                    name="password"
-                                    type="password"
-                                    autocomplete="new-password"
-                                    minlength="8"
-                                    maxlength="128"
-                                    required
-                                />
-                            </div>
-                            <div class="login-field">
-                                <label for="team-invite">Invite code</label>
-                                <input
-                                    id="team-invite"
-                                    name="inviteCode"
-                                    type="password"
-                                    autocomplete="off"
-                                    placeholder="Required to create an account"
-                                    required
-                                />
-                            </div>
-                            <button class="login-submit" type="submit">
-                                Create account
-                            </button>
-                        </form>
-
                         <p class="login-hint" id="team-hint">
                             Your editor account uses the site's shared
-                            publishing token — no GitHub account needed. The
-                            invite code comes from the site owner.
+                            publishing token — no GitHub account needed.
+                            New accounts are created by the site owner.
                         </p>
                         <div id="login-status" class="login-status" aria-live="polite"></div>
                     </div>
@@ -173,7 +108,6 @@ const authMode = getAuthMode();
         getApiBase,
         getAuthMode,
         teamLogin,
-        teamRegister,
     } from "../../lib/studio/github";
 
     const apiBase = getApiBase();
@@ -230,29 +164,11 @@ const authMode = getAuthMode();
             });
         }
     } else if (authMode === "team") {
-        const tabs = document.querySelectorAll<HTMLButtonElement>("[data-login-tab]");
-        const forms = document.querySelectorAll<HTMLFormElement>("[data-team-form]");
-
-        tabs.forEach((tab) => {
-            tab.addEventListener("click", () => {
-                const mode = tab.dataset.loginTab;
-                tabs.forEach((t) => {
-                    const active = t === tab;
-                    t.classList.toggle("is-active", active);
-                    t.setAttribute("aria-selected", String(active));
-                });
-                forms.forEach((form) => {
-                    form.hidden = form.dataset.teamForm !== mode;
-                });
-                setStatus("");
-            });
-        });
-
         function setLoading(form: HTMLFormElement, loading: boolean) {
             const btn = form.querySelector<HTMLButtonElement>(".login-submit");
             if (btn) {
                 btn.disabled = loading;
-                btn.textContent = loading ? "Please wait…" : form.dataset.loginTab === "register" ? "Create account" : "Sign in to Studio";
+                btn.textContent = loading ? "Please wait…" : "Sign in to Studio";
             }
         }
 
@@ -277,31 +193,6 @@ const authMode = getAuthMode();
                 return;
             }
             setStatus("Signed in — redirecting…");
-            window.location.assign(next);
-        });
-
-        const register = document.getElementById(
-            "team-register-form",
-        ) as HTMLFormElement | null;
-        register?.addEventListener("submit", async (event) => {
-            event.preventDefault();
-            const data = new FormData(register);
-            const username = String(data.get("username") || "").trim();
-            const password = String(data.get("password") || "");
-            const inviteCode = String(data.get("inviteCode") || "").trim();
-            if (!username || !password || !inviteCode) {
-                setStatus("Please fill in all fields.", "error");
-                return;
-            }
-            setLoading(register, true);
-            setStatus("Creating account…");
-            const result = await teamRegister(username, password, inviteCode);
-            if (!result.ok) {
-                setLoading(register, false);
-                setStatus(result.error || "Registration failed.", "error");
-                return;
-            }
-            setStatus("Account created — signing you in…");
             window.location.assign(next);
         });
     } else {

@@ -81,7 +81,130 @@ export function redis() {
 }
 
 export const USER_KEY = (username) => `ttj:user:${username}`;
+export const OWNER_KEY = "ttj:owner";
 export const RATE_KEY = (kind, id) => `ttj:rl:${kind}:${id}`;
+
+/* ---------------------------------------------------------------- */
+/* Owner / role helpers                                              */
+/* ---------------------------------------------------------------- */
+
+/** Check whether an owner account exists in the KV store. */
+export async function hasOwner() {
+    const r = redis();
+    const ownerUsername = await r.get(OWNER_KEY);
+    return typeof ownerUsername === "string" && ownerUsername.length > 0;
+}
+
+/** Get the owner username from the KV store. */
+export async function getOwnerUsername() {
+    const r = redis();
+    return (await r.get(OWNER_KEY)) || null;
+}
+
+/** Check if a given username is the owner. */
+export async function isOwner(username) {
+    const ownerUsername = await getOwnerUsername();
+    return ownerUsername !== null && username === ownerUsername;
+}
+
+/**
+ * Get a user record (including role). Returns the parsed object or null.
+ */
+export async function getUser(username) {
+    const r = redis();
+    const raw = await r.get(USER_KEY(username));
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * List all users. Returns an array of { username, role, createdAt }.
+ * Uses SCAN to iterate the keyspace — fine for a small editorial team.
+ */
+export async function listUsers() {
+    const r = redis();
+    const users = [];
+    let cursor = "0";
+    do {
+        const [nextCursor, keys] = await r.scan(cursor, { match: "ttj:user:*", count: 100 });
+        cursor = nextCursor;
+        for (const key of keys) {
+            const raw = await r.get(key);
+            if (raw) {
+                try {
+                    const record = JSON.parse(raw);
+                    users.push({
+                        username: record.username,
+                        role: record.role || "member",
+                        createdAt: record.createdAt,
+                    });
+                } catch {
+                    // skip corrupt entries
+                }
+            }
+        }
+    } while (cursor !== "0");
+    return users;
+}
+
+/**
+ * Create a new user. Returns { ok, error? }.
+ * If this is the first user, they become the owner automatically.
+ */
+export async function createUser(username, password, options = {}) {
+    if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
+        return { ok: false, error: "Username must be 3–32 characters using letters, numbers, dots, dashes or underscores." };
+    }
+    if (password.length < 8 || password.length > 128) {
+        return { ok: false, error: "Password must be between 8 and 128 characters." };
+    }
+
+    const r = redis();
+    const key = USER_KEY(username);
+    const existing = await r.get(key);
+    if (existing) {
+        return { ok: false, error: "That username is already taken." };
+    }
+
+    const { salt, hash } = hashPassword(password);
+    const isFirstUser = !(await hasOwner());
+    const role = isFirstUser ? "owner" : (options.role || "member");
+
+    await r.set(
+        key,
+        JSON.stringify({ username, salt, hash, role, createdAt: Date.now() }),
+        { ex: 60 * 60 * 24 * 365 * 5 }, // 5 years
+    );
+
+    if (isFirstUser) {
+        await r.set(OWNER_KEY, username, { ex: 60 * 60 * 24 * 365 * 10 });
+    }
+
+    return { ok: true, role };
+}
+
+/**
+ * Remove (deactivate) a user. The owner cannot be removed.
+ * Returns { ok, error? }.
+ */
+export async function removeUser(username) {
+    const ownerUsername = await getOwnerUsername();
+    if (ownerUsername && username === ownerUsername) {
+        return { ok: false, error: "Cannot remove the owner account." };
+    }
+    const r = redis();
+    const key = USER_KEY(username);
+    const existing = await r.get(key);
+    if (!existing) {
+        return { ok: false, error: "User not found." };
+    }
+    await r.del(key);
+    return { ok: true };
+}
 
 /* ---------------------------------------------------------------- */
 /* Password hashing (scrypt, per-user salt)                           */

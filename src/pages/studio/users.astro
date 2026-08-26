@@ -1,0 +1,279 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import StudioShell from "../../components/studio/StudioShell.astro";
+---
+
+<BaseLayout
+    title="Manage Users | The Technology Joint Studio"
+    description="Owner-only panel for managing Studio user accounts."
+    noindex
+>
+    <StudioShell active="users">
+        <header class="studio-header">
+            <div>
+                <p class="studio-eyebrow">Owner panel</p>
+                <h2>Manage users</h2>
+                <p class="studio-lead">
+                    Add or remove Studio accounts. Only the owner can access
+                    this panel.
+                </p>
+            </div>
+        </header>
+
+        <!-- Access denied banner (hidden by default, shown by JS) -->
+        <div class="studio-status studio-status--error" id="access-denied" hidden>
+            You don't have permission to access this page. This panel is
+            restricted to the site owner.
+        </div>
+
+        <div id="users-content" hidden>
+            <!-- User list -->
+            <section class="studio-panel">
+                <div class="studio-panel__header">
+                    <h3>Current users</h3>
+                    <button
+                        class="studio-button studio-button--secondary studio-button--sm"
+                        type="button"
+                        id="refresh-users"
+                    >
+                        Refresh
+                    </button>
+                </div>
+                <div id="users-loading" class="studio-lead">
+                    Loading users…
+                </div>
+                <div id="users-empty" class="studio-lead" hidden>
+                    No users found.
+                </div>
+                <table class="studio-table" id="users-table" hidden>
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-tbody"></tbody>
+                </table>
+            </section>
+
+            <!-- Add user form -->
+            <section class="studio-panel">
+                <div class="studio-panel__header">
+                    <h3>Add new user</h3>
+                </div>
+                <form id="add-user-form" class="studio-form">
+                    <div class="studio-field-row">
+                        <div class="studio-field">
+                            <label for="new-username">
+                                Username
+                                <span class="studio-field__required">*</span>
+                            </label>
+                            <input
+                                id="new-username"
+                                name="username"
+                                type="text"
+                                placeholder="3–32 chars: letters, numbers, . _ -"
+                                autocomplete="off"
+                                autocapitalize="none"
+                                spellcheck="false"
+                                minlength="3"
+                                maxlength="32"
+                                required
+                            />
+                        </div>
+                        <div class="studio-field">
+                            <label for="new-password">
+                                Password
+                                <span class="studio-field__required">*</span>
+                            </label>
+                            <input
+                                id="new-password"
+                                name="password"
+                                type="password"
+                                autocomplete="new-password"
+                                minlength="8"
+                                maxlength="128"
+                                required
+                            />
+                            <p class="studio-hint">
+                                Minimum 8 characters. Share this with the new
+                                user — they should change it after first login.
+                            </p>
+                        </div>
+                    </div>
+                    <div
+                        class="studio-status"
+                        id="add-user-status"
+                        aria-live="polite"
+                    ></div>
+                    <div class="studio-form__actions">
+                        <button class="studio-button" type="submit">
+                            Create account
+                        </button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </StudioShell>
+</BaseLayout>
+
+<script>
+    import {
+        getSession,
+        listUsers,
+        createUser,
+        removeUser,
+    } from "../../lib/studio/github";
+
+    const accessDenied = document.getElementById("access-denied");
+    const usersContent = document.getElementById("users-content");
+    const usersLoading = document.getElementById("users-loading");
+    const usersEmpty = document.getElementById("users-empty");
+    const usersTable = document.getElementById("users-table");
+    const usersTbody = document.getElementById("users-tbody");
+    const refreshBtn = document.getElementById("refresh-users");
+    const addForm = document.getElementById("add-user-form") as HTMLFormElement | null;
+    const addStatus = document.getElementById("add-user-status");
+
+    let isOwner = false;
+
+    function setStatus(
+        el: HTMLElement | null,
+        message: string,
+        kind: "info" | "success" | "error" = "info",
+    ) {
+        if (!el) return;
+        el.className = "studio-status";
+        if (kind === "success") el.classList.add("studio-status--success");
+        if (kind === "error") el.classList.add("studio-status--error");
+        el.textContent = message;
+    }
+
+    function formatDate(timestamp?: number): string {
+        if (!timestamp) return "—";
+        return new Date(timestamp).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+        });
+    }
+
+    function escapeHtml(value: string): string {
+        return value
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
+    async function loadUsers() {
+        if (!usersLoading || !usersEmpty || !usersTable || !usersTbody) return;
+
+        usersLoading.hidden = false;
+        usersEmpty.hidden = true;
+        usersTable.hidden = true;
+
+        const result = await listUsers();
+        usersLoading.hidden = true;
+
+        if (!result.ok || !result.users) {
+            usersEmpty.textContent = result.error || "Failed to load users.";
+            usersEmpty.hidden = false;
+            return;
+        }
+
+        if (result.users.length === 0) {
+            usersEmpty.hidden = false;
+            return;
+        }
+
+        usersTbody.innerHTML = result.users
+            .map(
+                (user) => `
+                <tr>
+                    <td class="studio-table__title">${escapeHtml(user.username)}</td>
+                    <td>
+                        <span class="studio-badge ${user.role === "owner" ? "studio-badge--featured" : "studio-badge--published"}">
+                            ${user.role === "owner" ? "Owner" : "Member"}
+                        </span>
+                    </td>
+                    <td class="studio-table__meta">${formatDate(user.createdAt)}</td>
+                    <td class="studio-table__actions">
+                        ${user.role !== "owner" ? `<button class="studio-link studio-link--danger" type="button" data-remove-user="${escapeHtml(user.username)}">Remove</button>` : '<span class="studio-table__meta">—</span>'}
+                    </td>
+                </tr>`,
+            )
+            .join("");
+
+        usersTable.hidden = false;
+    }
+
+    // Check owner access
+    const session = await getSession();
+    if (!session?.authenticated || session.user?.role !== "owner") {
+        if (accessDenied) accessDenied.hidden = false;
+    } else {
+        isOwner = true;
+        if (usersContent) usersContent.hidden = false;
+        await loadUsers();
+    }
+
+    // Refresh button
+    refreshBtn?.addEventListener("click", () => {
+        void loadUsers();
+    });
+
+    // Remove user buttons (delegated)
+    usersTbody?.addEventListener("click", async (event) => {
+        const target = event.target as HTMLElement;
+        const removeBtn = target.closest("[data-remove-user]");
+        if (!removeBtn) return;
+
+        const username = removeBtn.getAttribute("data-remove-user");
+        if (!username) return;
+
+        if (!confirm(`Remove user "${username}"? They will no longer be able to log in.`)) {
+            return;
+        }
+
+        const result = await removeUser(username);
+        if (!result.ok) {
+            alert(result.error || "Failed to remove user.");
+            return;
+        }
+        await loadUsers();
+    });
+
+    // Add user form
+    addForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!isOwner) return;
+
+        const data = new FormData(addForm);
+        const username = String(data.get("username") || "").trim();
+        const password = String(data.get("password") || "");
+
+        if (!username || !password) {
+            setStatus(addStatus, "Please enter both username and password.", "error");
+            return;
+        }
+
+        setStatus(addStatus, "Creating account…");
+        const result = await createUser(username, password);
+
+        if (!result.ok) {
+            setStatus(addStatus, result.error || "Failed to create account.", "error");
+            return;
+        }
+
+        setStatus(
+            addStatus,
+            `Account created for "${username}". Share the credentials securely.`,
+            "success",
+        );
+        addForm.reset();
+        await loadUsers();
+    });
+</script>

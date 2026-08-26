@@ -125,8 +125,9 @@ export function hasStudioConfig(): boolean {
 
 export interface StudioSession {
     authenticated: boolean;
-    user?: { login: string; name?: string; avatar_url?: string } | null;
+    user?: { login: string; name?: string; avatar_url?: string; role?: string } | null;
     scope?: string;
+    ownerExists?: boolean;
 }
 
 /** Ask the API whether the current browser has a valid session. */
@@ -146,8 +147,10 @@ export async function getSession(): Promise<StudioSession | null> {
                 username?: string;
                 name?: string;
                 avatar_url?: string;
+                role?: string;
             } | null;
             scope?: string;
+            ownerExists?: boolean;
         };
         // Normalize: team mode returns { username }, OAuth mode returns
         // { login }. Callers read `user.login` either way.
@@ -158,9 +161,11 @@ export async function getSession(): Promise<StudioSession | null> {
                       login: data.user.login ?? data.user.username ?? "",
                       name: data.user.name,
                       avatar_url: data.user.avatar_url,
+                      role: data.user.role,
                   }
                 : null,
             scope: data.scope,
+            ownerExists: data.ownerExists,
         };
     } catch {
         return { authenticated: false };
@@ -245,18 +250,98 @@ export function teamLogin(
     return teamAuth("/api/auth/login", { username, password });
 }
 
-/** Create a Studio account with the invite code — signs in automatically. */
-export function teamRegister(
-    username: string,
-    password: string,
-    inviteCode: string,
-): Promise<TeamAuthResult> {
-    return teamAuth("/api/auth/register", { username, password, inviteCode });
-}
 
 /* ------------------------------------------------------------------ */
 /* Low-level API call                                                  */
 /* ------------------------------------------------------------------ */
+
+/* ------------------------------------------------------------------ */
+/* Owner-only user management                                          */
+/* ------------------------------------------------------------------ */
+
+export interface TeamUser {
+    username: string;
+    role: string;
+    createdAt?: number;
+}
+
+export interface UserManagementResult {
+    ok: boolean;
+    error?: string;
+    user?: TeamUser;
+    users?: TeamUser[];
+}
+
+/** List all users (owner only). */
+export async function listUsers(): Promise<UserManagementResult> {
+    const apiBase = getApiBase();
+    if (!apiBase) return { ok: false, error: "The Studio API is not configured." };
+    try {
+        const response = await fetch(`${apiBase}/api/auth/users`, {
+            credentials: "include",
+            headers: { Accept: "application/json" },
+        });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            return { ok: false, error: data.error || `Failed to list users (${response.status}).` };
+        }
+        const data = await response.json() as { users: TeamUser[] };
+        return { ok: true, users: data.users };
+    } catch {
+        return { ok: false, error: "Could not reach the Studio API." };
+    }
+}
+
+/** Create a new user (owner only). */
+export async function createUser(
+    username: string,
+    password: string,
+): Promise<UserManagementResult> {
+    const apiBase = getApiBase();
+    if (!apiBase) return { ok: false, error: "The Studio API is not configured." };
+    try {
+        const response = await fetch(`${apiBase}/api/auth/register`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password }),
+        });
+        const data = await response.json().catch(() => ({})) as {
+            error?: string;
+            user?: TeamUser;
+        };
+        if (!response.ok) {
+            return { ok: false, error: data.error || `Failed to create user (${response.status}).` };
+        }
+        return { ok: true, user: data.user };
+    } catch {
+        return { ok: false, error: "Could not reach the Studio API." };
+    }
+}
+
+/** Remove/deactivate a user (owner only). */
+export async function removeUser(
+    username: string,
+): Promise<UserManagementResult> {
+    const apiBase = getApiBase();
+    if (!apiBase) return { ok: false, error: "The Studio API is not configured." };
+    try {
+        const response = await fetch(
+            `${apiBase}/api/auth/users?username=${encodeURIComponent(username)}`,
+            {
+                method: "DELETE",
+                credentials: "include",
+            },
+        );
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            return { ok: false, error: data.error || `Failed to remove user (${response.status}).` };
+        }
+        return { ok: true };
+    } catch {
+        return { ok: false, error: "Could not reach the Studio API." };
+    }
+}
 
 interface GitHubContentResult {
     sha?: string;
