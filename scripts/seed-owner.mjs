@@ -12,13 +12,14 @@
  *   KV_REST_API_URL     — from Vercel KV (Upstash)
  *   KV_REST_API_TOKEN   — from Vercel KV (Upstash)
  *
- * The owner password is generated randomly and printed to stdout. Copy it
- * immediately and change it after first login.
+ * Credentials are hardcoded in this script. Change the password after
+ * first login.
  */
 
-import { createHash, randomBytes, scryptSync } from "node:crypto";
+import { randomBytes, scryptSync } from "node:crypto";
 
 const OWNER_USERNAME = "israel_alabi";
+const OWNER_PASSWORD = "Israel does SEO.";
 const OWNER_DISPLAY = "Israel Alabi";
 
 // --- KV client (minimal, no dependencies beyond node:crypto) ---
@@ -49,12 +50,6 @@ async function kvRequest(method, path, body) {
   }
 }
 
-function randomPassword(length = 20) {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-  const bytes = randomBytes(length);
-  return Array.from(bytes, (b) => chars[b % chars.length]).join("");
-}
-
 function hashPassword(password) {
   const salt = randomBytes(16).toString("hex");
   const hash = scryptSync(password, salt, 64).toString("hex");
@@ -70,7 +65,7 @@ async function main() {
     process.exit(1);
   }
 
-  const password = randomPassword();
+  const password = OWNER_PASSWORD;
   const { salt, hash } = hashPassword(password);
 
   // Create user record
@@ -95,15 +90,15 @@ async function main() {
   });
 
   console.log("\n✅ Owner account created successfully!\n");
-  console.log("┌─────────────────────────────────────┐");
-  console.log("│  Owner Credentials                  │");
-  console.log("├─────────────────────────────────────┤");
-  console.log(`│  Username:  ${OWNER_USERNAME.padEnd(23)}│`);
-  console.log(`│  Password:  ${password.padEnd(23)}│`);
-  console.log("│                                     │");
-  console.log("│  ⚠️  Copy this password NOW.        │");
-  console.log("│  Change it after first login.       │");
-  console.log("└─────────────────────────────────────┘\n");
+  console.log("┌──────────────────────────────────────────┐");
+  console.log("│  Owner Credentials                       │");
+  console.log("├──────────────────────────────────────────┤");
+  console.log(`│  Username:  ${OWNER_USERNAME.padEnd(26)}│`);
+  console.log(`│  Password:  ${OWNER_PASSWORD.padEnd(26)}│`);
+  console.log("│  Display:   Israel Alabi                 │");
+  console.log("│                                          │");
+  console.log("│  ⚠️  Change this password after login.   │");
+  console.log("└──────────────────────────────────────────┘\n");
 }
 
 main().catch((err) => {
