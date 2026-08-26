@@ -397,6 +397,58 @@
     outline-offset: 2px;
 }
 
+/* ---- Password toggle ---- */
+
+.studio-field__toggle,
+.login-field__toggle {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.studio-field__toggle input,
+.login-field__toggle input {
+    flex: 1;
+    min-width: 0;
+}
+
+.studio-field__toggle input[type="password"],
+.studio-field__toggle input[type="text"],
+.login-field__toggle input[type="password"],
+.login-field__toggle input[type="text"] {
+    padding-right: 2.75rem;
+}
+
+.studio-toggle-pw,
+.login-toggle-pw {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 0;
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+    padding: 0.35rem;
+    border-radius: var(--radius-sm);
+    display: grid;
+    place-items: center;
+    transition: color var(--transition-fast), background var(--transition-fast);
+    line-height: 0;
+}
+
+.studio-toggle-pw:hover,
+.login-toggle-pw:hover {
+    color: var(--color-text);
+    background: var(--color-surface-alt);
+}
+
+.studio-toggle-pw:focus-visible,
+.login-toggle-pw:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
 .studio-field-row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
