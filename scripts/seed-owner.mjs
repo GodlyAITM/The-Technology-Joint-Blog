@@ -33,21 +33,41 @@ if (!KV_URL || !KV_TOKEN) {
   process.exit(1);
 }
 
-async function kvRequest(method, path, body) {
-  const url = `${KV_URL}${path}`;
-  const headers = {
-    Authorization: `Bearer ${KV_TOKEN}`,
-    "Content-Type": "application/json",
-  };
-  const opts = { method, headers };
-  if (body !== undefined) opts.body = JSON.stringify(body);
-  const res = await fetch(url, opts);
-  const text = await res.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
+async function kvGet(key) {
+  const res = await fetch(`${KV_URL}/get/${key}`, {
+    headers: { Authorization: `Bearer ${KV_TOKEN}` },
+  });
+  const data = await res.json();
+  // Upstash REST API returns { result: <value> } where value may be
+  // a string, number, or null. For strings it may be double-encoded.
+  if (data.result === null || data.result === undefined) return null;
+  if (typeof data.result === "string") {
+    try {
+      const parsed = JSON.parse(data.result);
+      // If it looks like { value: ... }, unwrap it.
+      if (parsed && typeof parsed === "object" && "value" in parsed) {
+        return parsed.value;
+      }
+      return parsed;
+    } catch {
+      return data.result;
+    }
   }
+  return data.result;
+}
+
+async function kvSet(key, value, ex) {
+  const body = { value, ex };
+  const res = await fetch(`${KV_URL}/set/${key}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${KV_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  return data;
 }
 
 function hashPassword(password) {
@@ -58,9 +78,9 @@ function hashPassword(password) {
 
 async function main() {
   // Check if owner already exists
-  const existing = await kvRequest("GET", `/get/ttj:owner`);
-  if (existing && existing.result) {
-    console.error(`Owner account already exists (${existing.result}).`);
+  const existingOwner = await kvGet("ttj:owner");
+  if (existingOwner) {
+    console.error(`Owner account already exists (${existingOwner}).`);
     console.error("Aborting — you can only seed the owner once.");
     process.exit(1);
   }
@@ -78,16 +98,11 @@ async function main() {
     createdAt: Date.now(),
   };
 
-  await kvRequest("SET", `/set/ttj:user:${OWNER_USERNAME}`, {
-    value: JSON.stringify(userRecord),
-    ex: 60 * 60 * 24 * 365 * 10, // 10 years
-  });
+  const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
+  await kvSet(`ttj:user:${OWNER_USERNAME}`, JSON.stringify(userRecord), TEN_YEARS);
 
   // Set owner pointer
-  await kvRequest("SET", "/set/ttj:owner", {
-    value: OWNER_USERNAME,
-    ex: 60 * 60 * 24 * 365 * 10,
-  });
+  await kvSet("ttj:owner", OWNER_USERNAME, TEN_YEARS);
 
   console.log("\n✅ Owner account created successfully!\n");
   console.log("┌──────────────────────────────────────────┐");
