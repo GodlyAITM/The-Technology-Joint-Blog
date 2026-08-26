@@ -13,6 +13,27 @@ body {
   overflow-x: clip;
 }
 
+/* Skip-to-content link — visible only on keyboard focus */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  z-index: 10000;
+  padding: 0.75rem 1.25rem;
+  background: var(--color-primary);
+  color: var(--color-on-primary, #fff);
+  font-weight: 700;
+  border-radius: 0 0 var(--radius-md, 8px) var(--radius-md, 8px);
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* Never let media blow out the viewport on small screens */
 img,
 video {
