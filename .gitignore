@@ -19,6 +19,9 @@ pnpm-debug.log*
 .env
 .env.production
 
+# legacy scripts (superseded by seed-owner.mjs)
+scripts/hash-password.mjs
+
 # macOS-specific files
 .DS_Store
 
